@@ -1,0 +1,34 @@
+name: Deploy Docker to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Deploy to EC2 via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@SEU_IP_PUBLICO << 'EOF'
+            cd /home/ubuntu/solar-share
+
+            # Baixar a versão mais recente
+            git pull origin main
+
+            # Build da imagem e restart do container
+            docker stop solarshare-frontend || true
+            docker rm solarshare-frontend || true
+            docker build -t solarshare-frontend .
+            docker run -d -p 80:80 --name solarshare-frontend solarshare-frontend
+          EOF
