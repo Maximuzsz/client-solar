@@ -20,15 +20,17 @@ jobs:
 
       - name: Deploy to EC2 via SSH
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@SEU_IP_PUBLICO << 'EOF'
+          ssh -o StrictHostKeyChecking=no ubuntu@3.144.6.56 << 'EOF'
             cd /home/ubuntu/solar-share
 
-            # Baixar a versão mais recente
+            # Puxa a última versão do repositório
             git pull origin main
 
-            # Build da imagem e restart do container
+            # Para e remove qualquer container anterior
             docker stop solarshare-frontend || true
             docker rm solarshare-frontend || true
+
+            # Rebuild e restart do container
             docker build -t solarshare-frontend .
             docker run -d -p 80:80 --name solarshare-frontend solarshare-frontend
           EOF
