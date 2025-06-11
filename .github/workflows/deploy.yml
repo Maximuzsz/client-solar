@@ -21,7 +21,7 @@ jobs:
       - name: Deploy to EC2 via SSH
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@3.144.6.56 << 'EOF'
-            cd /home/ubuntu/solar-share
+            cd /home/ubuntu/client-solar
 
             # Puxa a última versão do repositório
             git pull origin main
