@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800px" height="500px" viewBox="0 0 800 500" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Dashboard Preview</title>
+    <defs>
+        <linearGradient x1="0%" y1="0%" x2="100%" y2="100%" id="linearGradient-1">
+            <stop stop-color="#2563EB" offset="0%"></stop>
+            <stop stop-color="#10B981" offset="100%"></stop>
+        </linearGradient>
+        <filter x="-5.0%" y="-5.0%" width="110.0%" height="110.0%" filterUnits="objectBoundingBox" id="filter-2">
+            <feGaussianBlur stdDeviation="5" in="SourceGraphic"></feGaussianBlur>
+        </filter>
+        <filter x="-3.8%" y="-7.5%" width="107.5%" height="115.0%" filterUnits="objectBoundingBox" id="filter-3">
+            <feGaussianBlur stdDeviation="3" in="SourceGraphic"></feGaussianBlur>
+        </filter>
+        <linearGradient x1="0%" y1="0%" x2="100%" y2="0%" id="linearGradient-4">
+            <stop stop-color="#2563EB" offset="0%"></stop>
+            <stop stop-color="#10B981" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="Dashboard" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="Background" fill="#FFFFFF" x="0" y="0" width="800" height="500" rx="12"></rect>
+        
+        <!-- Header -->
+        <rect id="Header" fill="#F9FAFB" x="0" y="0" width="800" height="60"></rect>
+        <rect id="Logo" fill="url(#linearGradient-1)" x="20" y="15" width="30" height="30" rx="15"></rect>
+        <text id="SolarShare" font-family="Arial-BoldMT, Arial" font-size="16" font-weight="bold" fill="#111827">
+            <tspan x="60" y="35">SolarShare</tspan>
+        </text>
+        
+        <!-- Search Bar -->
+        <rect id="SearchBar" fill="#F3F4F6" x="300" y="15" width="200" height="30" rx="6"></rect>
+        <circle id="SearchIcon" fill="#9CA3AF" cx="315" cy="30" r="5"></circle>
+        
+        <!-- User Avatar -->
+        <circle id="UserAvatar" fill="#E5E7EB" cx="750" cy="30" r="15"></circle>
+        
+        <!-- Sidebar -->
+        <rect id="Sidebar" fill="#F9FAFB" x="0" y="60" width="180" height="440"></rect>
+        
+        <!-- Menu Items -->
+        <rect id="MenuItem1" fill="#EFF6FF" x="10" y="80" width="160" height="40" rx="6"></rect>
+        <rect id="MenuItem2" fill="#F9FAFB" x="10" y="130" width="160" height="40" rx="6"></rect>
+        <rect id="MenuItem3" fill="#F9FAFB" x="10" y="180" width="160" height="40" rx="6"></rect>
+        <rect id="MenuItem4" fill="#F9FAFB" x="10" y="230" width="160" height="40" rx="6"></rect>
+        <rect id="MenuItem5" fill="#F9FAFB" x="10" y="280" width="160" height="40" rx="6"></rect>
+        
+        <!-- Main Content -->
+        <rect id="MainContent" fill="#FFFFFF" x="180" y="60" width="620" height="440"></rect>
+        
+        <!-- Dashboard Title -->
+        <text id="Dashboard" font-family="Arial-BoldMT, Arial" font-size="18" font-weight="bold" fill="#111827">
+            <tspan x="200" y="90">Dashboard</tspan>
+        </text>
+        
+        <!-- Statistics Cards -->
+        <rect id="Card1" fill="#FFFFFF" filter="url(#filter-2)" x="200" y="110" width="180" height="100" rx="8"></rect>
+        <rect id="Card2" fill="#FFFFFF" filter="url(#filter-2)" x="400" y="110" width="180" height="100" rx="8"></rect>
+        <rect id="Card3" fill="#FFFFFF" filter="url(#filter-2)" x="600" y="110" width="180" height="100" rx="8"></rect>
+        
+        <!-- Chart Area -->
+        <rect id="ChartBackground" fill="#FFFFFF" filter="url(#filter-3)" x="200" y="230" width="580" height="220" rx="8"></rect>
+        <rect id="ChartHeader" fill="#F9FAFB" x="200" y="230" width="580" height="40" rx="8"></rect>
+        
+        <!-- Chart Lines -->
+        <polyline id="ChartLine1" stroke="url(#linearGradient-4)" stroke-width="3" points="220,400 270,360 320,380 370,330 420,350 470,300 520,320 570,270 620,290 670,250 720,280 770,240"></polyline>
+        
+        <!-- Legend -->
+        <circle id="Legend1" fill="#2563EB" cx="220" cy="450" r="5"></circle>
+        <text id="ConsumptionText" font-family="ArialMT, Arial" font-size="12" fill="#6B7280">
+            <tspan x="230" y="454">Consumo</tspan>
+        </text>
+        
+        <circle id="Legend2" fill="#10B981" cx="320" cy="450" r="5"></circle>
+        <text id="GenerationText" font-family="ArialMT, Arial" font-size="12" fill="#6B7280">
+            <tspan x="330" y="454">Geração</tspan>
+        </text>
+
+        <!-- X-Axis Labels -->
+        <text id="Jan" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="220" y="420">Jan</tspan>
+        </text>
+        <text id="Feb" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="270" y="420">Fev</tspan>
+        </text>
+        <text id="Mar" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="320" y="420">Mar</tspan>
+        </text>
+        <text id="Apr" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="370" y="420">Abr</tspan>
+        </text>
+        <text id="May" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="420" y="420">Mai</tspan>
+        </text>
+        <text id="Jun" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="470" y="420">Jun</tspan>
+        </text>
+        <text id="Jul" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="520" y="420">Jul</tspan>
+        </text>
+        <text id="Aug" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="570" y="420">Ago</tspan>
+        </text>
+        <text id="Sep" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="620" y="420">Set</tspan>
+        </text>
+        <text id="Oct" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="670" y="420">Out</tspan>
+        </text>
+        <text id="Nov" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="720" y="420">Nov</tspan>
+        </text>
+        <text id="Dec" font-family="ArialMT, Arial" font-size="10" fill="#9CA3AF">
+            <tspan x="770" y="420">Dez</tspan>
+        </text>
+
+    </g>
+</svg>
