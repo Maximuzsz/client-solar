@@ -25,16 +25,23 @@ jobs:
           PROJECT_DIR: /home/ubuntu/client-solar
           IMAGE_NAME: solarshare-frontend
           CONTAINER_NAME: solarshare-frontend
+          GIT_REPO: your-git-repo-url.git  # Add your actual Git repository URL here
         run: |
           ssh -o StrictHostKeyChecking=no $USER@$HOST /bin/bash << 'EOF'
             set -e  # Exit script if any command fails
             
-            echo "📁 Acessando o diretório do projeto..."
+            echo "📁 Acessando/Criando diretório do projeto..."
+            mkdir -p "$PROJECT_DIR"
             cd "$PROJECT_DIR"
 
-            echo "📥 Atualizando repositório..."
-            git reset --hard
-            git pull origin main
+            if [ ! -d .git ]; then
+              echo "📥 Clonando repositório..."
+              git clone "$GIT_REPO" .
+            else
+              echo "📥 Atualizando repositório..."
+              git reset --hard
+              git pull origin main
+            fi
 
             echo "🧹 Limpando containers antigos..."
             docker stop "$CONTAINER_NAME" 2>/dev/null || true
