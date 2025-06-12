@@ -47,14 +47,19 @@ jobs:
             git clean -fd
           fi
 
-          # 3. Install dependencies and build
+          # 3. Install all dependencies (including devDependencies)
           echo "📦 Installing dependencies..."
-          npm ci --omit=dev
+          npm ci
 
+          # 4. Build application
           echo "🏗️ Building application..."
           npm run build
 
-          # 4. Manage Docker containers
+          # 5. Install production dependencies only
+          echo "🔧 Installing production dependencies..."
+          npm ci --omit=dev
+
+          # 6. Manage Docker containers
           echo "🐳 Managing Docker containers..."
           if docker ps -a --format '{{.Names}}' | grep -q solarshare-frontend; then
             echo "⏹️ Stopping and removing existing container..."
@@ -62,7 +67,7 @@ jobs:
             docker rm solarshare-frontend || true
           fi
 
-          # 5. Build and run new container
+          # 7. Build and run new container
           echo "🔨 Building Docker image..."
           docker build -t solarshare-frontend .
 
@@ -74,9 +79,10 @@ jobs:
             --restart unless-stopped \
             solarshare-frontend
 
-          # 6. Cleanup
-          echo "🧹 Cleaning up old images..."
+          # 8. Cleanup
+          echo "🧹 Cleaning up..."
           docker image prune -af --filter "until=24h"
+          rm -rf node_modules
 
           echo "✅ Deployment completed successfully!"
           EOSSH
