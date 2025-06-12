@@ -26,22 +26,24 @@ jobs:
           IMAGE_NAME: solarshare-frontend
           CONTAINER_NAME: solarshare-frontend
           GIT_REPO: https://github.com/Maximuzsz/client-solar.git
-          NODE_OPTIONS: --max-old-space-size=4096
         run: |
-          ssh -o StrictHostKeyChecking=no $USER@$HOST /bin/bash << 'EOSSH'
-            set -euxo pipefail
+          ssh -o StrictHostKeyChecking=no $USER@$HOST /bin/bash << EOSSH
+            set -e
 
             echo "📁 Criando diretório do projeto (se necessário)..."
             sudo mkdir -p "$PROJECT_DIR"
             sudo chown -R $USER:$USER "$PROJECT_DIR"
 
-            cd "$PROJECT_DIR"
+            cd "$PROJECT_DIR" || {
+              echo "❌ Falha ao acessar diretório do projeto"
+              exit 1
+            }
 
             echo "📥 Sincronizando repositório..."
             if [ ! -d .git ]; then
               git clone "$GIT_REPO" .
             else
-              git fetch origin main
+              git fetch --all
               git reset --hard origin/main
             fi
 
@@ -49,11 +51,9 @@ jobs:
             docker stop "$CONTAINER_NAME" 2>/dev/null || true
             docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
+            echo "🔧 Instalando dependências..."
             if [ -f package.json ]; then
-              echo "🔧 Instalando dependências e buildando com mais memória..."
               npm ci
-              # Exporta variável para dar mais heap pro node no build
-              export NODE_OPTIONS="$NODE_OPTIONS"
               npm run build
             fi
 
