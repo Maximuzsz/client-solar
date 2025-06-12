@@ -6,9 +6,10 @@ on:
       - main
 
 env:
-  EC2_HOST: 3.142.124.62  # Usando o IP correto da instância
+  EC2_HOST: 3.142.124.62
   PROJECT_DIR: /home/ubuntu/client-solar
   CONTAINER_NAME: solarshare-frontend
+  GIT_REPO: https://github.com/seu-usuario/seu-repositorio.git
 
 jobs:
   deploy:
@@ -23,22 +24,26 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Verify EC2 connection
-        run: ssh -o StrictHostKeyChecking=no ubuntu@$EC2_HOST "echo 'EC2 connection successful'"
-
       - name: Deploy to EC2
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@$EC2_HOST << 'EOF'
             set -e  # Exit immediately if any command fails
             
-            echo "Changing to project directory..."
-            cd $PROJECT_DIR || { echo "Project directory not found"; exit 1; }
+            echo "Verifying/creating project directory..."
+            mkdir -p $PROJECT_DIR
+            cd $PROJECT_DIR
+
+            # Check if directory is a git repository
+            if [ ! -d .git ]; then
+              echo "Cloning repository for the first time..."
+              git clone $GIT_REPO .
+            fi
 
             echo "Pulling latest changes..."
             git pull origin main
 
             echo "Installing/updating dependencies..."
-            npm install  # Adicione este comando se for um projeto Node.js
+            npm install  # Ou o comando apropriado para seu projeto
 
             echo "Stopping and removing previous container..."
             docker stop $CONTAINER_NAME || true
