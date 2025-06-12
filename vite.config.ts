@@ -5,39 +5,75 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@assets': path.resolve(__dirname, '../attached_assets')
-    },
+    }
   },
+
   server: {
     host: '0.0.0.0',
     port: 5000,
     strictPort: true,
     cors: true,
+
     hmr: {
       host: '0.0.0.0',
       clientPort: 443,
-      protocol: 'wss'
+      protocol: 'wss' // WebSocket seguro (útil em ambientes com SSL como Replit)
     },
+
     watch: {
-      usePolling: true
+      usePolling: true // melhora compatibilidade com sistemas de arquivos como Docker, WSL
     },
+
     fs: {
-      // Permite todos os diretórios para acesso via filesystem
-      allow: ['..'],
-      strict: false
+      strict: false,
+      allow: [
+        path.resolve(__dirname, './'),              // projeto atual
+        path.resolve(__dirname, '../attached_assets') // assets externos
+      ]
     },
+
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3000', // API backend local
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path
+        rewrite: (path) => path // pode adicionar lógica extra se quiser remover prefixos
       }
     },
-    // Permitir host específico do Replit
-    allowedHosts: ['ea5246d2-fd09-4c9d-af34-df81c45d0405-00-fd4f6gp7phcr.riker.replit.dev']
+
+    allowedHosts: [
+      // necessário para funcionar corretamente em ambientes como Replit
+      'ea5246d2-fd09-4c9d-af34-df81c45d0405-00-fd4f6gp7phcr.riker.replit.dev'
+    ]
+  },
+
+  build: {
+    target: 'esnext',
+    minify: 'esbuild',
+    sourcemap: false,
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 1000,
+
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react')) return 'vendor-react'
+            return 'vendor'
+          }
+        }
+      }
+    }
+  },
+
+  optimizeDeps: {
+    esbuildOptions: {
+      target: 'esnext'
+    }
   }
 })
