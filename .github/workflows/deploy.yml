@@ -27,18 +27,15 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@3.142.124.62 /bin/bash << 'EOSSH'
           set -e
-          echo "🚀 Starting deployment process..."
+          echo "🚀 Starting optimized deployment process..."
           
           # 1. Navigate to project directory
-          echo "📂 Setting up project directory: /home/ubuntu/client-solar"
+          echo "📂 Setting up project directory..."
           mkdir -p /home/ubuntu/client-solar
-          cd /home/ubuntu/client-solar || {
-            echo "❌ Failed to access project directory"
-            exit 1
-          }
+          cd /home/ubuntu/client-solar
 
-          # 2. Clone or update repository
-          echo "🔄 Syncing repository..."
+          # 2. Update repository
+          echo "🔄 Updating repository..."
           if [ ! -d .git ]; then
             git clone https://github.com/Maximuzsz/client-solar.git .
           else
@@ -47,42 +44,35 @@ jobs:
             git clean -fd
           fi
 
-          # 3. Install all dependencies (including devDependencies)
-          echo "📦 Installing dependencies..."
-          npm ci
+          # 3. Increase Node.js memory limit
+          export NODE_OPTIONS="--max-old-space-size=4096"
 
-          # 4. Build application
-          echo "🏗️ Building application..."
+          # 4. Install dependencies with audit fix
+          echo "📦 Installing and updating dependencies..."
+          npm ci --legacy-peer-deps
+          npm audit fix --force || true
+
+          # 5. Build application with increased memory
+          echo "🏗️ Building application with extra memory..."
           npm run build
 
-          # 5. Install production dependencies only
-          echo "🔧 Installing production dependencies..."
-          npm ci --omit=dev
+          # 6. Clean up dev dependencies
+          echo "🧹 Cleaning up dev dependencies..."
+          npm prune --production
 
-          # 6. Manage Docker containers
+          # 7. Docker operations
           echo "🐳 Managing Docker containers..."
-          if docker ps -a --format '{{.Names}}' | grep -q solarshare-frontend; then
-            echo "⏹️ Stopping and removing existing container..."
-            docker stop solarshare-frontend || true
-            docker rm solarshare-frontend || true
-          fi
-
-          # 7. Build and run new container
-          echo "🔨 Building Docker image..."
+          docker stop solarshare-frontend || true
+          docker rm solarshare-frontend || true
           docker build -t solarshare-frontend .
-
-          echo "🚀 Starting new container..."
+          
+          echo "🚀 Starting container..."
           docker run -d \
             --name solarshare-frontend \
             -p 80:80 \
             -p 443:443 \
             --restart unless-stopped \
             solarshare-frontend
-
-          # 8. Cleanup
-          echo "🧹 Cleaning up..."
-          docker image prune -af --filter "until=24h"
-          rm -rf node_modules
 
           echo "✅ Deployment completed successfully!"
           EOSSH
