@@ -18,19 +18,37 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Deploy to EC2 via SSH
+      - name: Deploy to EC2
+        env:
+          HOST: 3.144.6.56
+          USER: ubuntu
+          PROJECT_DIR: /home/ubuntu/client-solar
+          IMAGE_NAME: solarshare-frontend
+          CONTAINER_NAME: solarshare-frontend
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@3.144.6.56 << 'EOF'
-            cd /home/ubuntu/client-solar
+          ssh -tt -o StrictHostKeyChecking=no $USER@$HOST << EOF
+            set -e  # Encerra o script se algum comando falhar
 
-            # Puxa a última versão do repositório
+            echo "📁 Acessando o diretório do projeto..."
+            cd $PROJECT_DIR
+
+            echo "📥 Atualizando repositório..."
+            git reset --hard
             git pull origin main
 
-            # Para e remove qualquer container anterior
-            docker stop solarshare-frontend || true
-            docker rm solarshare-frontend || true
+            echo "🧹 Limpando containers antigos..."
+            docker stop $CONTAINER_NAME 2>/dev/null || true
+            docker rm $CONTAINER_NAME 2>/dev/null || true
 
-            # Rebuild e restart do container
-            docker build -t solarshare-frontend .
-            docker run -d -p 80:80 --name solarshare-frontend solarshare-frontend
+            echo "🐳 Construindo imagem Docker..."
+            docker build -t $IMAGE_NAME .
+
+            echo "🚀 Iniciando container..."
+            docker run -d \
+              --name $CONTAINER_NAME \
+              -p 80:80 \
+              --restart unless-stopped \
+              $IMAGE_NAME
+
+            echo "✅ Deploy concluído com sucesso!"
           EOF
