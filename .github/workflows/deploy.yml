@@ -18,52 +18,54 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Deploy to EC2
+      - name: Deploy to EC2 via SSH
         env:
           HOST: 3.142.124.62
           USER: ubuntu
           PROJECT_DIR: /home/ubuntu/client-solar
           IMAGE_NAME: solarshare-frontend
           CONTAINER_NAME: solarshare-frontend
-          GIT_REPO: https://github.com/your-username/your-repo.git  # UPDATE THIS
+          GIT_REPO: https://github.com/Maximuzsz/client-solar.git
         run: |
-          ssh -o StrictHostKeyChecking=no $USER@$HOST /bin/bash << 'EOSSH'
-            set -e  # Exit immediately if any command fails
-            
-            # Verify and create project directory
-            echo "📁 Verifying project directory: $PROJECT_DIR"
-            sudo mkdir -p "$PROJECT_DIR"
-            sudo chown -R $USER:$USER "$PROJECT_DIR"
-            
-            cd "$PROJECT_DIR" || {
-              echo "❌ Failed to access project directory"; 
-              exit 1
-            }
+          ssh -o StrictHostKeyChecking=no $USER@$HOST << EOF
+            set -e
 
-            # Git repository setup
+            echo "📁 Criando diretório do projeto (se necessário)..."
+            sudo mkdir -p ${PROJECT_DIR}
+            sudo chown -R \$USER:\$USER ${PROJECT_DIR}
+            cd ${PROJECT_DIR}
+
+            echo "📥 Sincronizando repositório..."
             if [ ! -d .git ]; then
-              echo "📥 Cloning repository..."
-              git clone "$GIT_REPO" .
+              git clone ${GIT_REPO} .
             else
-              echo "📥 Updating repository..."
               git fetch --all
               git reset --hard origin/main
             fi
 
-            # Docker operations
-            echo "🧹 Cleaning old containers..."
-            docker stop "$CONTAINER_NAME" 2>/dev/null || true
-            docker rm "$CONTAINER_NAME" 2>/dev/null || true
+            echo "🐳 Parando container antigo (se houver)..."
+            docker stop ${CONTAINER_NAME} || true
+            docker rm ${CONTAINER_NAME} || true
 
-            echo "🐳 Building Docker image..."
-            docker build -t "$IMAGE_NAME" .
+            echo "🔧 Instalando dependências..."
+            if [ -f package.json ]; then
+              npm install -g npm@latest
+              npm ci
+              npm run build || true  # se necessário
+            fi
 
-            echo "🚀 Starting container..."
+            echo "🐋 Construindo imagem Docker..."
+            docker build -t ${IMAGE_NAME}:latest .
+
+            echo "🚀 Executando novo container..."
             docker run -d \
-              --name "$CONTAINER_NAME" \
+              --name ${CONTAINER_NAME} \
               -p 80:80 \
               --restart unless-stopped \
-              "$IMAGE_NAME"
+              ${IMAGE_NAME}:latest
 
-            echo "✅ Deployment completed successfully!"
-          EOSSH
+            echo "🧼 Limpando recursos não utilizados..."
+            docker system prune -af --volumes
+
+            echo "✅ Deploy concluído com sucesso!"
+          EOF
