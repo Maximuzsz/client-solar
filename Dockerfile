@@ -3,6 +3,10 @@ FROM node:20 AS build
 WORKDIR /app
 COPY . .
 RUN npm install
+
+# Aumenta a memória disponível para o Node.js no build
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 RUN npm run build
 
 # Etapa de produção (servidor estático)
