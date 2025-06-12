@@ -18,7 +18,7 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Deploy to EC2 via SSH
+      - name: Deploy to EC2
         env:
           HOST: 3.142.124.62
           USER: ubuntu
@@ -27,45 +27,46 @@ jobs:
           CONTAINER_NAME: solarshare-frontend
           GIT_REPO: https://github.com/Maximuzsz/client-solar.git
         run: |
-          ssh -o StrictHostKeyChecking=no $USER@$HOST << EOF
+          ssh -o StrictHostKeyChecking=no $USER@$HOST /bin/bash << 'EOSSH'
             set -e
 
             echo "📁 Criando diretório do projeto (se necessário)..."
-            sudo mkdir -p ${PROJECT_DIR}
-            sudo chown -R \$USER:\$USER ${PROJECT_DIR}
-            cd ${PROJECT_DIR}
+            sudo mkdir -p "$PROJECT_DIR"
+            sudo chown -R $USER:$USER "$PROJECT_DIR"
+
+            cd "$PROJECT_DIR" || {
+              echo "❌ Falha ao acessar diretório do projeto"
+              exit 1
+            }
 
             echo "📥 Sincronizando repositório..."
             if [ ! -d .git ]; then
-              git clone ${GIT_REPO} .
+              git clone "$GIT_REPO" .
             else
               git fetch --all
               git reset --hard origin/main
             fi
 
             echo "🐳 Parando container antigo (se houver)..."
-            docker stop ${CONTAINER_NAME} || true
-            docker rm ${CONTAINER_NAME} || true
+            docker stop "$CONTAINER_NAME" 2>/dev/null || true
+            docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
             echo "🔧 Instalando dependências..."
             if [ -f package.json ]; then
-              npm install -g npm@latest
               npm ci
-              npm run build || true  # se necessário
+              echo "⚙️ Buildando frontend..."
+              npm run build
             fi
 
-            echo "🐋 Construindo imagem Docker..."
-            docker build -t ${IMAGE_NAME}:latest .
+            echo "🐳 Buildando imagem Docker..."
+            docker build -t "$IMAGE_NAME" .
 
-            echo "🚀 Executando novo container..."
+            echo "🚀 Subindo novo container..."
             docker run -d \
-              --name ${CONTAINER_NAME} \
+              --name "$CONTAINER_NAME" \
               -p 80:80 \
               --restart unless-stopped \
-              ${IMAGE_NAME}:latest
+              "$IMAGE_NAME"
 
-            echo "🧼 Limpando recursos não utilizados..."
-            docker system prune -af --volumes
-
-            echo "✅ Deploy concluído com sucesso!"
-          EOF
+            echo "✅ Deploy finalizado com sucesso!"
+          EOSSH
