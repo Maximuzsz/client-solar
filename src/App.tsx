@@ -2,8 +2,6 @@ import { useEffect } from 'react'
 import { Route, Switch, useLocation } from 'wouter'
 import { AuthProvider, useAuth } from '@/hooks/useAuth.tsx'
 import { Toaster } from '@/components/ui/toaster'
-
-// Páginas da aplicação
 import Login from '@/pages/Login'
 import NotFound from '@/pages/NotFound'
 import Dashboard from '@/pages/Dashboard'
@@ -25,168 +23,177 @@ import EnergyBalance from '@/pages/EnergyBalance'
 import EnergyProjection from '@/pages/EnergyProjection'
 import LandingPage from '@/pages/LandingPage'
 
-/**
- * Componente para proteger rotas que requerem autenticação
- */
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAuth()
-  const [location, setLocation] = useLocation()
-
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      // Redireciona para login mantendo a rota original como state
-      setLocation(`/login?redirect=${encodeURIComponent(location)}`)
-    }
-  }, [isAuthenticated, loading, location, setLocation])
-
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        <span className="sr-only">Carregando...</span>
-      </div>
-    )
-  }
-
-  return isAuthenticated ? <>{children}</> : null
-}
-
-/**
- * Componente para rotas públicas que não devem ser acessadas quando autenticado
- */
-function PublicRoute({ children }: { children: React.ReactNode }) {
+// Componente protetor de rota
+function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
   const [, setLocation] = useLocation()
 
+  // Log de estado de autenticação removido por segurança
+
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      setLocation('/dashboard')
+    if (!loading && !isAuthenticated) {
+      // Log de redirecionamento removido
+      setLocation('/login')
+    } else if (!loading && isAuthenticated) {
+      // Usuário autenticado, continuando para o conteúdo protegido
     }
   }, [isAuthenticated, loading, setLocation])
 
   if (loading) {
+    // Estado de carregamento da autenticação
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        <p className="ml-4 text-lg text-primary font-medium">Carregando...</p>
       </div>
     )
   }
 
-  return !isAuthenticated ? <>{children}</> : null
+  // Se não está carregando e está autenticado, mostra o conteúdo
+  if (isAuthenticated) {
+    // Mostrando conteúdo protegido
+    return <>{children}</>
+  }
+  
+  // Se não está carregando e não está autenticado, não mostra nada (será redirecionado)
+  // Não mostrando conteúdo (redirecionamento pendente)
+  return null;
 }
 
-/**
- * Componente principal de roteamento
- */
-function AppRouter() {
+function Router() {
+  const { isAuthenticated } = useAuth();
+  
   return (
     <Switch>
-      {/* Rotas públicas */}
-      <PublicRoute path="/login">
-        <Login />
-      </PublicRoute>
-
+      {/* Rota da Landing Page */}
       <Route path="/">
         <LandingPage />
       </Route>
 
-      {/* Rotas protegidas */}
-      <ProtectedRoute path="/dashboard">
-        <Dashboard />
-      </ProtectedRoute>
+      {/* Rota de Login */}
+      <Route path="/login">
+        {isAuthenticated ? <Dashboard /> : <Login />}
+      </Route>
 
-      <ProtectedRoute path="/networks">
-        <Networks />
-      </ProtectedRoute>
+      {/* Rota do Dashboard (protegida) */}
+      <Route path="/dashboard">
+        <RequireAuth>
+          <Dashboard />
+        </RequireAuth>
+      </Route>
 
-      <ProtectedRoute path="/units">
-        <Units />
-      </ProtectedRoute>
+      {/* Demais rotas protegidas */}
+      <Route path="/networks">
+        <RequireAuth>
+          <Networks />
+        </RequireAuth>
+      </Route>
+      <Route path="/units">
+        <RequireAuth>
+          <Units />
+        </RequireAuth>
+      </Route>
+      <Route path="/units-list">
+        <RequireAuth>
+          <UnitsList />
+        </RequireAuth>
+      </Route>
+      <Route path="/networks/:networkId/units">
+        <RequireAuth>
+          <Units />
+        </RequireAuth>
+      </Route>
+      <Route path="/networks/:networkId/balance">
+        <RequireAuth>
+          <NetworkBalance />
+        </RequireAuth>
+      </Route>
+      <Route path="/readings/:unitId">
+        <RequireAuth>
+          <Readings />
+        </RequireAuth>
+      </Route>
+      <Route path="/units/:unitId/readings">
+        <RequireAuth>
+          <Readings />
+        </RequireAuth>
+      </Route>
+      <Route path="/calculator">
+        <RequireAuth>
+          <Calculator />
+        </RequireAuth>
+      </Route>
 
-      <ProtectedRoute path="/units-list">
-        <UnitsList />
-      </ProtectedRoute>
+      <Route path="/billing">
+        <RequireAuth>
+          <Billing />
+        </RequireAuth>
+      </Route>
+      <Route path="/plans">
+        <RequireAuth>
+          <Plans />
+        </RequireAuth>
+      </Route>
+      <Route path="/checkout/:planId">
+        <RequireAuth>
+          <Checkout />
+        </RequireAuth>
+      </Route>
+      <Route path="/pagamento-sucesso">
+        <RequireAuth>
+          <PaymentSuccess />
+        </RequireAuth>
+      </Route>
+      <Route path="/subscribe">
+        <RequireAuth>
+          <Subscribe />
+        </RequireAuth>
+      </Route>
 
-      <ProtectedRoute path="/networks/:networkId/units">
-        <Units />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/networks/:networkId/balance">
-        <NetworkBalance />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/readings/:unitId">
-        <Readings />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/units/:unitId/readings">
-        <Readings />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/calculator">
-        <Calculator />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/billing">
-        <Billing />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/plans">
-        <Plans />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/checkout/:planId">
-        <Checkout />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/pagamento-sucesso">
-        <PaymentSuccess />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/subscribe">
-        <Subscribe />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/distribuidoras">
-        <Distribuidoras />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/tarifas">
-        <Tarifas />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/profile">
-        <Profile />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/settings">
-        <Settings />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/energy-balance">
-        <EnergyBalance />
-      </ProtectedRoute>
-
-      <ProtectedRoute path="/energy-projection">
-        <EnergyProjection />
-      </ProtectedRoute>
-
-      {/* Rota de fallback */}
-      <Route>
+      <Route path="/distribuidoras">
+        <RequireAuth>
+          <Distribuidoras />
+        </RequireAuth>
+      </Route>
+      <Route path="/tarifas">
+        <RequireAuth>
+          <Tarifas />
+        </RequireAuth>
+      </Route>
+      <Route path="/profile">
+        <RequireAuth>
+          <Profile />
+        </RequireAuth>
+      </Route>
+      <Route path="/settings">
+        <RequireAuth>
+          <Settings />
+        </RequireAuth>
+      </Route>
+      <Route path="/energy-balance">
+        <RequireAuth>
+          <EnergyBalance />
+        </RequireAuth>
+      </Route>
+      <Route path="/energy-projection">
+        <RequireAuth>
+          <EnergyProjection />
+        </RequireAuth>
+      </Route>
+      <Route path="*">
         <NotFound />
       </Route>
     </Switch>
   )
 }
 
-/**
- * Componente principal da aplicação
- */
-export default function App() {
+function App() {
   return (
     <AuthProvider>
-      <AppRouter />
+      <Router />
       <Toaster />
     </AuthProvider>
   )
 }
+
+export default App
