@@ -9,7 +9,7 @@ env:
   EC2_HOST: 3.142.124.62
   PROJECT_DIR: /home/ubuntu/client-solar
   CONTAINER_NAME: solarshare-frontend
-  GIT_REPO: https://github.com/seu-usuario/seu-repositorio.git
+  GIT_REPO: https://github.com/Maximuzsz/client-solar.git
 
 jobs:
   deploy:
@@ -29,10 +29,10 @@ jobs:
           ssh -o StrictHostKeyChecking=no ubuntu@$EC2_HOST << 'ENDSSH'
             set -e  # Exit immediately if any command fails
             
-            # Definir variáveis dentro da sessão SSH
+            # Definir variáveis
             PROJECT_DIR="$HOME/client-solar"
             CONTAINER_NAME="solarshare-frontend"
-            GIT_REPO="https://github.com/seu-usuario/seu-repositorio.git"
+            GIT_REPO="https://github.com/Maximuzsz/client-solar.git"
 
             echo "Verifying/creating project directory at ${PROJECT_DIR}..."
             mkdir -p "${PROJECT_DIR}"
@@ -48,17 +48,19 @@ jobs:
             git pull origin main
 
             echo "Installing/updating dependencies..."
-            # Adapte para seu gerenciador de pacotes (npm, yarn, pip, etc.)
             if [ -f package.json ]; then
               npm ci
+              npm audit fix || true  # Ignora erros de auditoria
             fi
 
-            echo "Stopping and removing previous container..."
+            echo "Stopping and removing previous containers..."
+            # Remove todos os containers usando a porta 80
+            docker ps -q --filter "publish=80" | xargs -r docker stop | xargs -r docker rm || true
             docker stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
             docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
 
-            echo "Building new Docker image..."
-            docker build -t "${CONTAINER_NAME}" .
+            echo "Building new Docker image with BuildKit..."
+            DOCKER_BUILDKIT=1 docker build -t "${CONTAINER_NAME}" .
 
             echo "Starting new container..."
             docker run -d \
@@ -71,6 +73,9 @@ jobs:
             sleep 5  # Dê tempo para o container iniciar
             docker ps --filter "name=${CONTAINER_NAME}" --format '{{.Status}}' | grep 'Up' || \
               { echo "Container failed to start"; exit 1; }
+
+            echo "Cleaning up old images..."
+            docker image prune -af --filter "until=24h"
 
             echo "Deployment completed successfully!"
           ENDSSH
