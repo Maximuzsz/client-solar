@@ -1,4 +1,4 @@
-name: Deploy Docker to EC2More actions
+name: Deploy Docker to EC2
 
 on:
   push:
@@ -26,11 +26,9 @@ jobs:
           IMAGE_NAME: solarshare-frontend
           CONTAINER_NAME: solarshare-frontend
         run: |
-          ssh -tt -o StrictHostKeyChecking=no $USER@$HOST << EOF
-            set -e  # Encerra o script se algum comando falhar
-          ssh -tt -o StrictHostKeyChecking=no $USER@$HOST << 'EOF'
-            set -e
-
+          ssh -o StrictHostKeyChecking=no $USER@$HOST /bin/bash << 'EOF'
+            set -e  # Exit script if any command fails
+            
             echo "📁 Acessando o diretório do projeto..."
             cd "$PROJECT_DIR"
 
@@ -40,19 +38,16 @@ jobs:
 
             echo "🧹 Limpando containers antigos..."
             docker stop "$CONTAINER_NAME" 2>/dev/null || true
-            docker rm  "$CONTAINER_NAME" 2>/dev/null || true
+            docker rm "$CONTAINER_NAME" 2>/dev/null || true
 
             echo "🐳 Construindo imagem Docker..."
-            docker build -t $IMAGE_NAME .
             docker build -t "$IMAGE_NAME" .
 
             echo "🚀 Iniciando container..."
             docker run -d \
-              --name $CONTAINER_NAME \
               --name "$CONTAINER_NAME" \
               -p 80:80 \
               --restart unless-stopped \
-              $IMAGE_NAME
               "$IMAGE_NAME"
 
             echo "✅ Deploy concluído com sucesso!"
