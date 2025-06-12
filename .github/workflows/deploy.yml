@@ -20,52 +20,64 @@ jobs:
 
       - name: Deploy to EC2
         env:
-          HOST: 3.142.124.62
+          HOST: ${{ secrets.EC2_HOST }}  # Recomendo mover para secrets
           USER: ubuntu
           PROJECT_DIR: /home/ubuntu/client-solar
           IMAGE_NAME: solarshare-frontend
           CONTAINER_NAME: solarshare-frontend
           GIT_REPO: https://github.com/Maximuzsz/client-solar.git
         run: |
-          ssh -o StrictHostKeyChecking=no $USER@$HOST /bin/bash << EOSSH
+          ssh -o StrictHostKeyChecking=no $USER@$HOST /bin/bash << 'EOSSH'
             set -e
+            echo "🚀 Iniciando processo de deploy..."
 
-            echo "📁 Criando diretório do projeto (se necessário)..."
-            sudo mkdir -p "$PROJECT_DIR"
-            sudo chown -R $USER:$USER "$PROJECT_DIR"
+            # 1. Preparar ambiente
+            echo "📁 Criando/atualizando diretório do projeto..."
+            mkdir -p "$PROJECT_DIR"
+            cd "$PROJECT_DIR"
 
-            cd "$PROJECT_DIR" || {
-              echo "❌ Falha ao acessar diretório do projeto"
-              exit 1
-            }
-
+            # 2. Atualizar código
             echo "📥 Sincronizando repositório..."
             if [ ! -d .git ]; then
               git clone "$GIT_REPO" .
             else
-              git fetch --all
+              git fetch origin main
               git reset --hard origin/main
+              git clean -fd
             fi
 
-            echo "🐳 Parando container antigo (se houver)..."
-            docker stop "$CONTAINER_NAME" 2>/dev/null || true
-            docker rm "$CONTAINER_NAME" 2>/dev/null || true
-
+            # 3. Instalar dependências e buildar
             echo "🔧 Instalando dependências..."
-            if [ -f package.json ]; then
-              npm ci
-              npm run build
+            npm ci --omit=dev  # Instala apenas dependências de produção
+
+            echo "🏗️ Realizando build..."
+            npm run build
+
+            # 4. Gerenciar containers Docker
+            echo "🐳 Gerenciando containers..."
+            EXISTING_CONTAINER=$(docker ps -aq -f name="$CONTAINER_NAME")
+            
+            if [ "$EXISTING_CONTAINER" ]; then
+              echo "⏹️ Parando container existente..."
+              docker stop "$CONTAINER_NAME"
+              docker rm "$CONTAINER_NAME"
             fi
 
-            echo "🐳 Buildando imagem Docker..."
+            # 5. Buildar e rodar nova imagem
+            echo "🐳 Buildando nova imagem Docker..."
             docker build -t "$IMAGE_NAME" .
 
-            echo "🚀 Subindo novo container..."
+            echo "🚀 Iniciando novo container..."
             docker run -d \
               --name "$CONTAINER_NAME" \
               -p 80:80 \
+              -p 443:443 \
               --restart unless-stopped \
               "$IMAGE_NAME"
 
-            echo "✅ Deploy finalizado com sucesso!"
+            # 6. Limpeza
+            echo "🧹 Limpando imagens antigas..."
+            docker image prune -af --filter "until=24h"
+
+            echo "🎉 Deploy concluído com sucesso!"
           EOSSH

@@ -22,7 +22,7 @@ export default defineConfig({
     hmr: {
       host: '0.0.0.0',
       clientPort: 443,
-      protocol: 'wss' // WebSocket seguro (útil em ambientes com SSL como Replit)
+      protocol: 'wss'
     },
 
     watch: {
@@ -39,15 +39,14 @@ export default defineConfig({
 
     proxy: {
       '/api': {
-        target: 'http://localhost:3000', // API backend local
+        target: 'http://api.solarshare.com.br/api/v1',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path // pode adicionar lógica extra se quiser remover prefixos
+        rewrite: (path) => path 
       }
     },
 
     allowedHosts: [
-      // necessário para funcionar corretamente em ambientes como Replit
       'ea5246d2-fd09-4c9d-af34-df81c45d0405-00-fd4f6gp7phcr.riker.replit.dev'
     ]
   },
