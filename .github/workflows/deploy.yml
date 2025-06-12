@@ -10,74 +10,73 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup SSH
+      - name: Add EC2 to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan 3.142.124.62 >> ~/.ssh/known_hosts
+
+      - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Deploy to EC2
-        env:
-          HOST: ${{ secrets.EC2_HOST }}  # Recomendo mover para secrets
-          USER: ubuntu
-          PROJECT_DIR: /home/ubuntu/client-solar
-          IMAGE_NAME: solarshare-frontend
-          CONTAINER_NAME: solarshare-frontend
-          GIT_REPO: https://github.com/Maximuzsz/client-solar.git
+      - name: Deploy application to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no $USER@$HOST /bin/bash << 'EOSSH'
-            set -e
-            echo "🚀 Iniciando processo de deploy..."
+          ssh -o StrictHostKeyChecking=no ubuntu@3.142.124.62 /bin/bash << 'EOSSH'
+          set -e
+          echo "🚀 Starting deployment process..."
+          
+          # 1. Navigate to project directory
+          echo "📂 Setting up project directory: /home/ubuntu/client-solar"
+          mkdir -p /home/ubuntu/client-solar
+          cd /home/ubuntu/client-solar || {
+            echo "❌ Failed to access project directory"
+            exit 1
+          }
 
-            # 1. Preparar ambiente
-            echo "📁 Criando/atualizando diretório do projeto..."
-            mkdir -p "$PROJECT_DIR"
-            cd "$PROJECT_DIR"
+          # 2. Clone or update repository
+          echo "🔄 Syncing repository..."
+          if [ ! -d .git ]; then
+            git clone https://github.com/Maximuzsz/client-solar.git .
+          else
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
+          fi
 
-            # 2. Atualizar código
-            echo "📥 Sincronizando repositório..."
-            if [ ! -d .git ]; then
-              git clone "$GIT_REPO" .
-            else
-              git fetch origin main
-              git reset --hard origin/main
-              git clean -fd
-            fi
+          # 3. Install dependencies and build
+          echo "📦 Installing dependencies..."
+          npm ci --omit=dev
 
-            # 3. Instalar dependências e buildar
-            echo "🔧 Instalando dependências..."
-            npm ci --omit=dev  # Instala apenas dependências de produção
+          echo "🏗️ Building application..."
+          npm run build
 
-            echo "🏗️ Realizando build..."
-            npm run build
+          # 4. Manage Docker containers
+          echo "🐳 Managing Docker containers..."
+          if docker ps -a --format '{{.Names}}' | grep -q solarshare-frontend; then
+            echo "⏹️ Stopping and removing existing container..."
+            docker stop solarshare-frontend || true
+            docker rm solarshare-frontend || true
+          fi
 
-            # 4. Gerenciar containers Docker
-            echo "🐳 Gerenciando containers..."
-            EXISTING_CONTAINER=$(docker ps -aq -f name="$CONTAINER_NAME")
-            
-            if [ "$EXISTING_CONTAINER" ]; then
-              echo "⏹️ Parando container existente..."
-              docker stop "$CONTAINER_NAME"
-              docker rm "$CONTAINER_NAME"
-            fi
+          # 5. Build and run new container
+          echo "🔨 Building Docker image..."
+          docker build -t solarshare-frontend .
 
-            # 5. Buildar e rodar nova imagem
-            echo "🐳 Buildando nova imagem Docker..."
-            docker build -t "$IMAGE_NAME" .
+          echo "🚀 Starting new container..."
+          docker run -d \
+            --name solarshare-frontend \
+            -p 80:80 \
+            -p 443:443 \
+            --restart unless-stopped \
+            solarshare-frontend
 
-            echo "🚀 Iniciando novo container..."
-            docker run -d \
-              --name "$CONTAINER_NAME" \
-              -p 80:80 \
-              -p 443:443 \
-              --restart unless-stopped \
-              "$IMAGE_NAME"
+          # 6. Cleanup
+          echo "🧹 Cleaning up old images..."
+          docker image prune -af --filter "until=24h"
 
-            # 6. Limpeza
-            echo "🧹 Limpando imagens antigas..."
-            docker image prune -af --filter "until=24h"
-
-            echo "🎉 Deploy concluído com sucesso!"
+          echo "✅ Deployment completed successfully!"
           EOSSH
