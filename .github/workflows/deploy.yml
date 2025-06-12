@@ -24,74 +24,95 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
+      - name: Test SSH Connection
+        run: ssh -o StrictHostKeyChecking=no ubuntu@$EC2_HOST "echo 'SSH connection successful'"
+
       - name: Deploy to EC2
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@$EC2_HOST << 'ENDSSH'
-            set -e  # Exit immediately if any command fails
+            set -euo pipefail
+            echo "=== Starting deployment ==="
             
-            # Definir variáveis
+            # Variables
             PROJECT_DIR="$HOME/client-solar"
             CONTAINER_NAME="solarshare-frontend"
             GIT_REPO="https://github.com/Maximuzsz/client-solar.git"
-
-            echo "=== Atualizando sistema e instalando dependências ==="
+            
+            # Update system
+            echo "=== Updating system ==="
             sudo apt-get update -qq
-            sudo apt-get install -y docker-buildx-plugin
-
-            echo "=== Configurando ambiente do projeto ==="
+            sudo apt-get install -y docker.io docker-buildx-plugin
+            
+            # Ensure user has docker permissions
+            sudo usermod -aG docker ubuntu || true
+            
+            # Project setup
+            echo "=== Setting up project ==="
             mkdir -p "${PROJECT_DIR}"
-            cd "${PROJECT_DIR}" || { echo "Failed to enter project directory"; exit 1; }
-
+            cd "${PROJECT_DIR}"
+            
+            # Clone if not exists, otherwise pull
             if [ ! -d .git ]; then
-              echo "Clonando repositório..."
               git clone "${GIT_REPO}" .
+            else
+              git fetch origin
+              git reset --hard origin/main
             fi
-
-            echo "Atualizando código..."
-            git pull origin main
-
-            echo "=== Resolvendo problemas de dependências ==="
+            
+            # Node.js dependencies
             if [ -f package.json ]; then
-              echo "Atualizando npm..."
-              npm install -g npm@latest
-
-              echo "Instalando dependências..."
-              npm ci
+              echo "=== Handling Node.js dependencies ==="
+              # Use nvm or existing node
+              export NVM_DIR="$HOME/.nvm"
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
               
-              echo "Corrigindo vulnerabilidades..."
-              npm update eslint @humanwhocodes/object-schema @humanwhocodes/config-array
+              if ! command -v node &> /dev/null; then
+                curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+                source ~/.nvm/nvm.sh
+                nvm install --lts
+              fi
+              
+              npm install -g npm@latest
+              npm ci
               npm audit fix --force || true
             fi
-
-            echo "=== Gerenciando containers Docker ==="
-            echo "Parando containers conflitantes..."
-            docker ps -q --filter "publish=80" | xargs -r docker stop | xargs -r docker rm || true
+            
+            # Docker operations
+            echo "=== Managing Docker containers ==="
+            # Stop and remove existing containers
             docker stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
             docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
-
-            echo "=== Construindo nova imagem ==="
-            echo "Configurando BuildKit..."
+            
+            # Remove any container using port 80
+            docker ps -q --filter "publish=80" | xargs -r docker stop || true
+            docker ps -aq --filter "publish=80" | xargs -r docker rm || true
+            
+            # Build new image
+            echo "=== Building Docker image ==="
             export DOCKER_BUILDKIT=1
             docker buildx install
-
-            echo "Construindo imagem Docker..."
-            docker buildx build --load -t "${CONTAINER_NAME}" .
-
-            echo "=== Iniciando aplicação ==="
-            echo "Iniciando novo container..."
+            docker build -t "${CONTAINER_NAME}" .
+            
+            # Run container
+            echo "=== Starting container ==="
             docker run -d \
               -p 80:80 \
               --name "${CONTAINER_NAME}" \
               --restart unless-stopped \
               "${CONTAINER_NAME}"
-
-            echo "=== Verificando deploy ==="
-            sleep 5
-            docker ps --filter "name=${CONTAINER_NAME}" --format '{{.Status}}' | grep 'Up' || \
-              { echo "Falha ao iniciar container"; docker logs "${CONTAINER_NAME}"; exit 1; }
-
-            echo "=== Limpeza ==="
-            docker system prune -af --volumes
-
-            echo "✅ Deploy concluído com sucesso!"
+            
+            # Verify deployment
+            echo "=== Verifying deployment ==="
+            sleep 10
+            if ! docker ps --filter "name=${CONTAINER_NAME}" --format '{{.Status}}' | grep -q 'Up'; then
+              echo "❌ Container failed to start"
+              docker logs "${CONTAINER_NAME}"
+              exit 1
+            fi
+            
+            # Cleanup
+            echo "=== Cleaning up ==="
+            docker system prune -af --volumes || true
+            
+            echo "✅ Deployment successful!"
           ENDSSH
