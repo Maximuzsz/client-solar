@@ -27,7 +27,7 @@ jobs:
           CONTAINER_NAME: solarshare-frontend
           GIT_REPO: https://github.com/Maximuzsz/client-solar.git
         run: |
-          ssh -o StrictHostKeyChecking=no $USER@$HOST /bin/bash << 'EOSSH'
+          ssh -o StrictHostKeyChecking=no $USER@$HOST /bin/bash << EOSSH
             set -e
 
             echo "📁 Criando diretório do projeto (se necessário)..."
@@ -54,7 +54,6 @@ jobs:
             echo "🔧 Instalando dependências..."
             if [ -f package.json ]; then
               npm ci
-              echo "⚙️ Buildando frontend..."
               npm run build
             fi
 
