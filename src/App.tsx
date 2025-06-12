@@ -3,7 +3,7 @@ import { Route, Switch, useLocation } from 'wouter'
 import { AuthProvider, useAuth } from '@/hooks/useAuth.tsx'
 import { Toaster } from '@/components/ui/toaster'
 
-// Implementação do LoadingSpinner diretamente no arquivo
+// Implementação do LoadingSpinner
 const LoadingSpinner = ({ fullScreen = false }: { fullScreen?: boolean }) => (
   <div className={`flex items-center justify-center ${fullScreen ? 'h-screen' : ''}`}>
     <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
@@ -11,8 +11,16 @@ const LoadingSpinner = ({ fullScreen = false }: { fullScreen?: boolean }) => (
   </div>
 )
 
-// Lazy loading para melhor performance
-const Login = React.lazy(() => import('@/pages/Login'))
+// Definindo o tipo para o componente Login com a prop onSuccess
+type LoginProps = {
+  onSuccess?: () => void;
+};
+
+// Lazy loading com tipagem adequada
+const Login = React.lazy(() => import('@/pages/Login').then(module => ({
+  default: module.default as React.FC<LoginProps>
+})));
+
 const NotFound = React.lazy(() => import('@/pages/NotFound'))
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'))
 const Networks = React.lazy(() => import('@/pages/Networks'))
@@ -41,7 +49,6 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      // Armazena a rota atual para redirecionar após login
       sessionStorage.setItem('redirectPath', window.location.pathname)
       setLocation('/login')
     }
@@ -68,7 +75,6 @@ function ProtectedRoute({ path, component: Component }: { path: string, componen
 function Router() {
   const { isAuthenticated, loading } = useAuth()
   
-  // Evita flash de conteúdo não autenticado
   if (loading) {
     return <LoadingSpinner fullScreen />
   }
@@ -76,12 +82,10 @@ function Router() {
   return (
     <Suspense fallback={<LoadingSpinner fullScreen />}>
       <Switch>
-        {/* Rota da Landing Page */}
         <Route path="/">
           <LandingPage />
         </Route>
 
-        {/* Rota de Login com redirecionamento pós-login */}
         <Route path="/login">
           {isAuthenticated ? (
             <Dashboard />
@@ -94,7 +98,6 @@ function Router() {
           )}
         </Route>
 
-        {/* Rotas protegidas */}
         <ProtectedRoute path="/dashboard" component={Dashboard} />
         <ProtectedRoute path="/networks" component={Networks} />
         <ProtectedRoute path="/units" component={Units} />
@@ -116,7 +119,6 @@ function Router() {
         <ProtectedRoute path="/energy-balance" component={EnergyBalance} />
         <ProtectedRoute path="/energy-projection" component={EnergyProjection} />
 
-        {/* Rota 404 */}
         <Route path="*">
           <NotFound />
         </Route>
