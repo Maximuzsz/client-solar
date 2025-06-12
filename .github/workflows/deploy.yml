@@ -34,48 +34,64 @@ jobs:
             CONTAINER_NAME="solarshare-frontend"
             GIT_REPO="https://github.com/Maximuzsz/client-solar.git"
 
-            echo "Verifying/creating project directory at ${PROJECT_DIR}..."
+            echo "=== Atualizando sistema e instalando dependências ==="
+            sudo apt-get update -qq
+            sudo apt-get install -y docker-buildx-plugin
+
+            echo "=== Configurando ambiente do projeto ==="
             mkdir -p "${PROJECT_DIR}"
             cd "${PROJECT_DIR}" || { echo "Failed to enter project directory"; exit 1; }
 
-            # Check if directory is a git repository
             if [ ! -d .git ]; then
-              echo "Cloning repository for the first time..."
+              echo "Clonando repositório..."
               git clone "${GIT_REPO}" .
             fi
 
-            echo "Pulling latest changes..."
+            echo "Atualizando código..."
             git pull origin main
 
-            echo "Installing/updating dependencies..."
+            echo "=== Resolvendo problemas de dependências ==="
             if [ -f package.json ]; then
+              echo "Atualizando npm..."
+              npm install -g npm@latest
+
+              echo "Instalando dependências..."
               npm ci
-              npm audit fix || true  # Ignora erros de auditoria
+              
+              echo "Corrigindo vulnerabilidades..."
+              npm update eslint @humanwhocodes/object-schema @humanwhocodes/config-array
+              npm audit fix --force || true
             fi
 
-            echo "Stopping and removing previous containers..."
-            # Remove todos os containers usando a porta 80
+            echo "=== Gerenciando containers Docker ==="
+            echo "Parando containers conflitantes..."
             docker ps -q --filter "publish=80" | xargs -r docker stop | xargs -r docker rm || true
             docker stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
             docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
 
-            echo "Building new Docker image with BuildKit..."
-            DOCKER_BUILDKIT=1 docker build -t "${CONTAINER_NAME}" .
+            echo "=== Construindo nova imagem ==="
+            echo "Configurando BuildKit..."
+            export DOCKER_BUILDKIT=1
+            docker buildx install
 
-            echo "Starting new container..."
+            echo "Construindo imagem Docker..."
+            docker buildx build --load -t "${CONTAINER_NAME}" .
+
+            echo "=== Iniciando aplicação ==="
+            echo "Iniciando novo container..."
             docker run -d \
               -p 80:80 \
               --name "${CONTAINER_NAME}" \
               --restart unless-stopped \
               "${CONTAINER_NAME}"
 
-            echo "Verifying container is running..."
-            sleep 5  # Dê tempo para o container iniciar
+            echo "=== Verificando deploy ==="
+            sleep 5
             docker ps --filter "name=${CONTAINER_NAME}" --format '{{.Status}}' | grep 'Up' || \
-              { echo "Container failed to start"; exit 1; }
+              { echo "Falha ao iniciar container"; docker logs "${CONTAINER_NAME}"; exit 1; }
 
-            echo "Cleaning up old images..."
-            docker image prune -af --filter "until=24h"
+            echo "=== Limpeza ==="
+            docker system prune -af --volumes
 
-            echo "Deployment completed successfully!"
+            echo "✅ Deploy concluído com sucesso!"
           ENDSSH
