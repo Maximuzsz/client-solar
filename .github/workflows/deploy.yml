@@ -41,10 +41,12 @@ jobs:
             # Update system
             echo "=== Updating system ==="
             sudo apt-get update -qq
-            sudo apt-get install -y docker.io docker-buildx-plugin
+            sudo apt-get install -y docker.io docker-compose docker-buildx-plugin
             
             # Ensure user has docker permissions
             sudo usermod -aG docker ubuntu || true
+            # Apply group changes without needing logout
+            newgrp docker || true
             
             # Project setup
             echo "=== Setting up project ==="
@@ -57,6 +59,7 @@ jobs:
             else
               git fetch origin
               git reset --hard origin/main
+              git clean -fd
             fi
             
             # Node.js dependencies
@@ -68,7 +71,7 @@ jobs:
               
               if ! command -v node &> /dev/null; then
                 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-                source ~/.nvm/nvm.sh
+                source ~/.bashrc
                 nvm install --lts
               fi
               
