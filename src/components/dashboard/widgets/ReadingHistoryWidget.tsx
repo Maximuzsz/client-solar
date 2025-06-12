@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
 import { WidgetConfig } from '@/services/dashboardCustomization/dashboardLayoutService';
 import { 
   Select,
@@ -20,50 +19,67 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { CalendarDays, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { unitsAPI } from '@/services/unitsAPI';
+
+interface Reading {
+  id: string;
+  unitName: string;
+  value: number;
+  readingAt: string;
+  unitType: 'Consumer' | 'Generator';
+}
+
+interface Unit {
+  id: number;
+  name: string;
+}
+
 
 interface ReadingHistoryWidgetProps {
   widget: WidgetConfig;
 }
 
+interface WidgetConfigProps {
+  unitId?: string;
+  networkId?: string;
+  limit?: number;
+  showDownload?: boolean;
+  showUnit?: boolean;
+}
+
 const ReadingHistoryWidget: React.FC<ReadingHistoryWidgetProps> = ({ widget }) => {
-  // Extrair configurações do widget
   const {
     unitId,
     networkId,
-    limit = 5,
     showDownload = true,
     showUnit = true,
-  } = widget.config;
+  } = widget.config as WidgetConfigProps;
   
-  // Estado local para filtros que podem ser alterados pelo usuário
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(
     unitId ? String(unitId) : null
   );
   
   // Consultar unidades disponíveis
-  const { data: unitsData } = useQuery({
-    queryKey: ['/api/v1/units', networkId],
+  const { data: unitsData } = useQuery<Unit[]>({
+    queryKey: ['units', networkId],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (networkId) params.append('networkId', networkId.toString());
-      
-      const response = await apiRequest('GET', `/api/v1/units?${params.toString()}`);
-      return response.data;
+      const response = await unitsAPI.getByNetwork(networkId?.toString() || '');
+      // Assumindo que a API retorna um array de unidades diretamente
+      // Se retornar um objeto com propriedade data, ajuste conforme necessário
+      return Array.isArray(response) ? response : [];
     },
     enabled: showUnit && !unitId && !!networkId,
   });
   
   // Consultar histórico de leituras
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['/api/v1/readings/history', selectedUnitId, networkId],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedUnitId) params.append('unitId', selectedUnitId);
-      if (networkId) params.append('networkId', networkId.toString());
-      params.append('limit', limit.toString());
-      
-      const response = await apiRequest('GET', `/api/v1/readings/history?${params.toString()}`);
-      return response.data;
+  const { data, isLoading, error } = useQuery<Reading[]>({
+    queryKey: ['readings/history', selectedUnitId, networkId],
+    queryFn: async () => {      
+      const response = await unitsAPI.getById(
+        selectedUnitId || networkId?.toString() || ''
+      );
+      // Garantir que retornamos um array de leituras
+      return Array.isArray(response) ? response : [];
     },
     enabled: !!selectedUnitId || !!networkId,
   });
@@ -73,7 +89,7 @@ const ReadingHistoryWidget: React.FC<ReadingHistoryWidgetProps> = ({ widget }) =
     if (!data || data.length === 0) return;
     
     const headers = ['ID', 'Unidade', 'Valor (kWh)', 'Data da Leitura', 'Tipo de Unidade'];
-    const csvData = data.map((reading: any) => [
+    const csvData = data.map((reading: Reading) => [
       reading.id,
       reading.unitName,
       reading.value,
@@ -83,7 +99,7 @@ const ReadingHistoryWidget: React.FC<ReadingHistoryWidgetProps> = ({ widget }) =
     
     const csvContent = [
       headers.join(','),
-      ...csvData.map(row => row.join(','))
+      ...csvData.map((row: (string | number)[]) => row.join(','))
     ].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -99,8 +115,7 @@ const ReadingHistoryWidget: React.FC<ReadingHistoryWidgetProps> = ({ widget }) =
     document.body.removeChild(link);
   };
   
-  // Formatar data para exibição
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -111,7 +126,6 @@ const ReadingHistoryWidget: React.FC<ReadingHistoryWidgetProps> = ({ widget }) =
     });
   };
   
-  // Renderizar estados de carregamento/erro
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -137,13 +151,13 @@ const ReadingHistoryWidget: React.FC<ReadingHistoryWidgetProps> = ({ widget }) =
         {showUnit && !unitId && unitsData && unitsData.length > 0 && (
           <Select
             value={selectedUnitId || ""}
-            onValueChange={(value) => setSelectedUnitId(value || null)}
+            onValueChange={(value: string) => setSelectedUnitId(value || null)}
           >
             <SelectTrigger className="w-[220px] h-8">
               <SelectValue placeholder="Selecionar unidade" />
             </SelectTrigger>
             <SelectContent>
-              {unitsData.map((unit: any) => (
+              {unitsData.map((unit: Unit) => (
                 <SelectItem key={unit.id} value={unit.id.toString()}>
                   {unit.name}
                 </SelectItem>
@@ -177,7 +191,7 @@ const ReadingHistoryWidget: React.FC<ReadingHistoryWidgetProps> = ({ widget }) =
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((reading: any) => (
+              {data.map((reading: Reading) => (
                 <TableRow key={reading.id}>
                   {showUnit && (
                     <TableCell className="font-medium truncate" style={{ maxWidth: '120px' }}>

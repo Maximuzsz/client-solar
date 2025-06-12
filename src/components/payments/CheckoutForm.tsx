@@ -1,8 +1,8 @@
-import { useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 
 interface CheckoutFormProps {
@@ -10,12 +10,12 @@ interface CheckoutFormProps {
   returnUrl?: string;
 }
 
-export function CheckoutForm({ planId, returnUrl = "/" }: CheckoutFormProps) {
+export function CheckoutForm({ returnUrl = "/" }: CheckoutFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [, setLocation] = useLocation();
+  const [,] = useLocation();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

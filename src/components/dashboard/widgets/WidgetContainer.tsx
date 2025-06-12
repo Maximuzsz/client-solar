@@ -1,19 +1,11 @@
-import React, { useState } from 'react';
-import { WidgetConfig, WidgetType } from '@/services/dashboardCustomization/dashboardLayoutService';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
 } from '@/components/ui/card';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { 
   Dialog,
   DialogContent,
   DialogDescription,
@@ -21,39 +13,46 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { 
-  MoreHorizontal, 
-  Maximize2, 
-  X, 
-  Minimize2, 
-  Settings, 
-  Edit, 
-  Copy, 
-  Trash,
-  Zap,
-  LineChart,
-  BarChart,
-  Gauge,
-  Table,
-  Users,
-  Calendar,
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { WidgetConfig, WidgetType } from '@/services/dashboardCustomization/dashboardLayoutService';
+import {
   AlertCircle,
+  BarChart,
+  Bell,
+  Calendar,
   CloudSun,
-  Bell
+  Copy,
+  Edit,
+  Gauge,
+  LineChart,
+  Maximize2,
+  Minimize2,
+  MoreHorizontal,
+  Settings,
+  Table,
+  Trash,
+  Users,
+  Zap
 } from 'lucide-react';
+import React, { useState } from 'react';
 
 // Importar componentes de widget
+import AnomalyDetectionWidget from './AnomalyDetectionWidget';
 import ConsumptionChartWidget from './ConsumptionChartWidget';
-import GenerationChartWidget from './GenerationChartWidget';
 import EnergyBalanceWidget from './EnergyBalanceWidget';
 import FinancialSummaryWidget from './FinancialSummaryWidget';
-import ReadingHistoryWidget from './ReadingHistoryWidget';
-import UnitsSummaryWidget from './UnitsSummaryWidget';
+import GenerationChartWidget from './GenerationChartWidget';
 import PredictionChartWidget from './PredictionChartWidget';
-import AnomalyDetectionWidget from './AnomalyDetectionWidget';
-import WeatherForecastWidget from './WeatherForecastWidget';
+import ReadingHistoryWidget from './ReadingHistoryWidget';
 import TariffAlertsWidget from './TariffAlertsWidget';
+import UnitsSummaryWidget from './UnitsSummaryWidget';
+import WeatherForecastWidget from './WeatherForecastWidget';
 
 interface WidgetContainerProps {
   widget: WidgetConfig;

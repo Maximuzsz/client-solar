@@ -32,17 +32,6 @@ interface Unit {
   updatedAt: string
 }
 
-// Interface da rede
-interface Network {
-  id: number
-  name: string
-  description: string
-  active: boolean
-  ownerId: number
-  createdAt: string
-  updatedAt: string
-}
-
 interface Concessionaire {
   id: number
   name: string
@@ -304,17 +293,12 @@ export default function Units() {
     }
   };
   
-  // Função para navegar para a página de leituras de uma unidade
-  const handleViewReadings = (unitId: number) => {
-    setLocation(`/units/${unitId}/readings`);
-  };
-  
   // Função para editar uma unidade
   const handleEditUnit = async (id: number) => {
-    const unit = await fetchUnitDetails(id);
+  const unit = await fetchUnitDetails(id);
     if (unit) {
       setSelectedUnit(unit);
-      // Certifique-se de incluir apenas campos que o backend aceita para atualização
+      // Certifique-se de incluir todos os campos obrigatórios
       setNewUnit({
         name: unit.name,
         address: unit.address || '',
@@ -323,7 +307,8 @@ export default function Units() {
         postalCode: unit.postalCode || '',
         type: unit.type,
         networkId: unit.networkId, // Use o valor existente na unidade
-        concessionaireId: unit.concessionaireId || 1 // Definir valor padrão se não existir
+        concessionaireId: unit.concessionaireId || 1, // Definir valor padrão se não existir
+        userId: unit.userId // Adicione esta linha com o valor apropriado
       });
       setOpenEditDialog(true);
       console.log("Abrindo formulário de edição com dados:", {

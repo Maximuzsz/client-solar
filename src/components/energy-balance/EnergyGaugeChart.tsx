@@ -1,9 +1,9 @@
 import React from 'react';
-import { 
+import {
+  Cell,
+  Pie,
+  PieChart,
   ResponsiveContainer,
-  PieChart, 
-  Pie, 
-  Cell, 
   Tooltip
 } from 'recharts';
 
@@ -21,16 +21,14 @@ const EnergyGaugeChart: React.FC<EnergyGaugeChartProps> = ({
   showLabels = true
 }) => {
   // Evitar divisão por zero
-  if (consumption === 0 && generation === 0) {
-    consumption = 1; // Adicionar um valor mínimo para evitar problemas de renderização
-  }
+  const safeConsumption = consumption === 0 && generation === 0 ? 1 : consumption;
 
   const data = [
-    { name: 'Consumo', value: consumption },
+    { name: 'Consumo', value: safeConsumption },
     { name: 'Geração', value: generation }
   ];
 
-  const total = consumption + generation;
+  const total = safeConsumption + generation;
   const percentage = generation > 0 ? Math.round((generation / total) * 100) : 0;
 
   // Função customizada de formatação para o tooltip
@@ -53,7 +51,7 @@ const EnergyGaugeChart: React.FC<EnergyGaugeChartProps> = ({
             startAngle={180}
             endAngle={0}
           >
-            {data.map((entry, index) => (
+            {data.map((_, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
             ))}
           </Pie>

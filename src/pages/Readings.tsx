@@ -14,31 +14,7 @@ import { format } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 
-// Interface da unidade
-interface Unit {
-  id: number
-  name: string
-  address: string
-  city: string
-  state: string
-  postalCode: string
-  type: 'Consumer' | 'Generator'
-  active: boolean
-  networkId: number
-  createdAt: string
-  updatedAt: string
-}
 
-// Interface da leitura
-interface Reading {
-  id: number
-  unitId: number
-  value: number
-  readingAt: Date | string
-  createdAt: string
-  updatedAt: string
-  unit?: Unit
-}
 
 export default function Readings() {
   const { toast } = useToast()

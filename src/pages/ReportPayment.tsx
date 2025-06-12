@@ -261,28 +261,34 @@ export default function ReportPayment() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Comprovante de Pagamento</FormLabel>
-                      <div className="flex items-center gap-4">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById('file-upload')?.click()}
-                          disabled={isUploading}
-                        >
-                          {isUploading ? 'Enviando...' : 'Carregar comprovante'}
-                        </Button>
-                        <input
-                          id="file-upload"
-                          type="file"
-                          className="hidden"
-                          accept="image/png,image/jpeg,image/jpg,application/pdf"
-                          onChange={handleFileChange}
-                        />
-                        {uploadedFileName && (
-                          <span className="text-sm text-muted-foreground">
-                            {uploadedFileName}
-                          </span>
-                        )}
-                      </div>
+                      <FormControl>
+                        <div className="flex items-center gap-4">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => document.getElementById('file-upload')?.click()}
+                            disabled={isUploading}
+                          >
+                            {isUploading ? 'Enviando...' : 'Carregar comprovante'}
+                          </Button>
+                          <input
+                            id="file-upload"
+                            type="file"
+                            className="hidden"
+                            accept="image/png,image/jpeg,image/jpg,application/pdf"
+                            onChange={(event) => {
+                              field.onChange(event)
+                              handleFileChange(event)
+                            }}
+                            ref={field.ref}
+                          />
+                          {uploadedFileName && (
+                            <span className="text-sm text-muted-foreground">
+                              {uploadedFileName}
+                            </span>
+                          )}
+                        </div>
+                      </FormControl>
                       <FormDescription>
                         Envie um comprovante em PNG, JPG ou PDF (máx. 5MB)
                       </FormDescription>
@@ -290,6 +296,7 @@ export default function ReportPayment() {
                     </FormItem>
                   )}
                 />
+
 
                 <div className="pt-4">
                   <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>

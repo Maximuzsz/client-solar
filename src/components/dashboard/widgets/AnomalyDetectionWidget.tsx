@@ -1,28 +1,32 @@
-import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import { WidgetConfig } from '@/services/dashboardCustomization/dashboardLayoutService';
-import { 
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { apiRequest } from '@/lib/queryClient';
+import { useQuery } from '@tanstack/react-query';
+import { AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ZAxis, Legend, ReferenceArea } from 'recharts';
-import { AlertCircle, Check, AlertTriangle, Info } from 'lucide-react';
-
-interface AnomalyDetectionWidgetProps {
-  widget: WidgetConfig;
-}
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+  ZAxis,
+} from 'recharts';
 
 // Tipos de anomalias
 enum AnomalyType {
@@ -33,22 +37,27 @@ enum AnomalyType {
   DEVICE_MALFUNCTION = 'device_malfunction',
 }
 
-// Interface para anomalia
+interface AnomalyDetectionWidgetConfig {
+  unitId?: number | string;
+  networkId?: number | string;
+  timeRange?: 'week' | 'month' | 'quarter' | 'year';
+  threshold?: number;
+  showResolved?: boolean;
+}
+
 interface Anomaly {
   id: string;
-  unitId: number;
-  unitName: string;
-  date: string;
   type: AnomalyType;
+  confidence: number;
+  unitName: string;
+  date: string; // data vinda da API, converter ao renderizar
+  status: 'new' | 'reviewing' | 'resolved' | 'false_positive';
   value: number;
   expectedValue: number;
   deviation: number;
-  confidence: number;
-  status: 'new' | 'reviewing' | 'resolved' | 'false_positive';
   details: string;
 }
 
-// Mapeamento de nomes amigáveis para tipos de anomalias
 const anomalyTypeNames: Record<AnomalyType, string> = {
   [AnomalyType.NONE]: 'Nenhuma Anomalia',
   [AnomalyType.CONSUMPTION_SPIKE]: 'Pico de Consumo',
@@ -57,8 +66,7 @@ const anomalyTypeNames: Record<AnomalyType, string> = {
   [AnomalyType.DEVICE_MALFUNCTION]: 'Falha em Equipamento',
 };
 
-// Cores para os diferentes tipos de anomalias
-const anomalyTypeColors: Record<AnomalyType, { light: string, dark: string }> = {
+const anomalyTypeColors: Record<AnomalyType, { light: string; dark: string }> = {
   [AnomalyType.NONE]: { light: '#e5e7eb', dark: '#9ca3af' },
   [AnomalyType.CONSUMPTION_SPIKE]: { light: '#fee2e2', dark: '#ef4444' },
   [AnomalyType.UNUSUAL_PATTERN]: { light: '#fef3c7', dark: '#f59e0b' },
@@ -66,66 +74,74 @@ const anomalyTypeColors: Record<AnomalyType, { light: string, dark: string }> = 
   [AnomalyType.DEVICE_MALFUNCTION]: { light: '#f3e8ff', dark: '#8b5cf6' },
 };
 
-const AnomalyDetectionWidget: React.FC<AnomalyDetectionWidgetProps> = ({ widget }) => {
-  // Extrair configurações do widget
+interface AnomalyDetectionWidgetProps {
+  widget: {
+    config: AnomalyDetectionWidgetConfig;
+  };
+}
+
+const AnomalyDetectionWidget: React.FC<AnomalyDetectionWidgetProps> = ({
+  widget,
+}) => {
   const {
     unitId,
     networkId,
     timeRange = 'month',
-    threshold = 0.8, // Limiar de confiança para exibir anomalias
+    threshold = 0.8,
     showResolved = false,
   } = widget.config;
-  
-  // Estado local para filtros que podem ser alterados pelo usuário
-  const [selectedTimeRange, setSelectedTimeRange] = useState<'week' | 'month' | 'quarter' | 'year'>(
-    timeRange as 'week' | 'month' | 'quarter' | 'year'
-  );
+
+  const [selectedTimeRange, setSelectedTimeRange] = useState<
+    'week' | 'month' | 'quarter' | 'year'
+  >(timeRange);
   const [selectedView, setSelectedView] = useState<'list' | 'chart'>('list');
-  
-  // Consultar dados de anomalias da API
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['/api/v1/dashboard/advanced/anomalies', selectedTimeRange, unitId, networkId, threshold, showResolved],
+
+  const { data, isLoading, error } = useQuery<Anomaly[]>({
+    queryKey: [
+      '/api/v1/dashboard/advanced/anomalies',
+      selectedTimeRange,
+      unitId,
+      networkId,
+      threshold,
+      showResolved,
+    ],
     queryFn: async () => {
-      // Construir parâmetros de consulta
       const params = new URLSearchParams();
       params.append('timeRange', selectedTimeRange);
       params.append('threshold', threshold.toString());
       params.append('showResolved', showResolved.toString());
-      if (unitId) params.append('unitId', unitId.toString());
-      if (networkId) params.append('networkId', networkId.toString());
-      
-      const response = await apiRequest('GET', `/api/v1/dashboard/advanced/anomalies?${params.toString()}`);
+      if (unitId !== undefined && unitId !== null) params.append('unitId', unitId.toString());
+      if (networkId !== undefined && networkId !== null) params.append('networkId', networkId.toString());
+
+      const response = await apiRequest(
+        'GET',
+        `/api/v1/dashboard/advanced/anomalies?${params.toString()}`
+      );
       return response.data;
     },
   });
-  
-  // Formatar dados para o gráfico
-  const chartData = useMemo(() => {
-    if (!data) return [];
-    
-    return data.map((anomaly: Anomaly) => ({
-      x: new Date(anomaly.date).getTime(),
-      y: anomaly.value,
-      z: anomaly.confidence * 10, // Tamanho do ponto baseado na confiança
-      anomaly,
-    }));
-  }, [data]);
-  
-  // Agrupar anomalias por tipo
+
+  // Inicializa os arrays por tipo de anomalia
   const anomaliesByType = useMemo(() => {
-    if (!data) return {};
-    
-    return data.reduce((acc: Record<AnomalyType, Anomaly[]>, anomaly: Anomaly) => {
-      if (!acc[anomaly.type]) {
-        acc[anomaly.type] = [];
-      }
-      acc[anomaly.type].push(anomaly);
+    if (!data) return {} as Record<AnomalyType, Anomaly[]>;
+    const init: Record<AnomalyType, Anomaly[]> = {
+      [AnomalyType.NONE]: [],
+      [AnomalyType.CONSUMPTION_SPIKE]: [],
+      [AnomalyType.UNUSUAL_PATTERN]: [],
+      [AnomalyType.POSSIBLE_LEAK]: [],
+      [AnomalyType.DEVICE_MALFUNCTION]: [],
+    };
+
+    return data.reduce((acc, anomaly) => {
+      const type = Object.values(AnomalyType).includes(anomaly.type)
+        ? anomaly.type
+        : AnomalyType.NONE;
+      acc[type].push(anomaly);
       return acc;
-    }, {} as Record<AnomalyType, Anomaly[]>);
+    }, init);
   }, [data]);
-  
-  // Função para renderizar o status badge
-  const renderStatusBadge = (status: 'new' | 'reviewing' | 'resolved' | 'false_positive') => {
+
+  const renderStatusBadge = (status: Anomaly['status']): React.ReactNode => {
     switch (status) {
       case 'new':
         return <Badge variant="destructive">Nova</Badge>;
@@ -134,212 +150,187 @@ const AnomalyDetectionWidget: React.FC<AnomalyDetectionWidgetProps> = ({ widget 
       case 'resolved':
         return <Badge variant="outline">Resolvida</Badge>;
       case 'false_positive':
-        return <Badge variant="outline" className="bg-gray-100">Falso positivo</Badge>;
+        return (
+          <Badge variant="outline" className="bg-gray-100">
+            Falso positivo
+          </Badge>
+        );
       default:
         return null;
     }
   };
-  
-  // Função para renderizar o ícone de severidade
-  const renderSeverityIcon = (confidence: number) => {
+
+  const renderSeverityIcon = (confidence: number): JSX.Element => {
     if (confidence >= 0.9) {
-      return <AlertCircle className="h-5 w-5 text-red-500" />;
+      return (
+        <AlertCircle
+          className="h-5 w-5 text-red-500"
+          aria-label="Alta severidade"
+        />
+      );
     } else if (confidence >= 0.7) {
-      return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+      return (
+        <AlertTriangle
+          className="h-5 w-5 text-amber-500"
+          aria-label="Média severidade"
+        />
+      );
     } else {
-      return <Info className="h-5 w-5 text-blue-500" />;
+      return (
+        <Info className="h-5 w-5 text-blue-500" aria-label="Baixa severidade" />
+      );
     }
   };
-  
-  // Renderizar estados de carregamento/erro
+
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+        <div
+          className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"
+          aria-label="Carregando"
+        />
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-center p-4">
+        <div className="text-center p-4" role="alert">
           <p className="text-red-500 mb-2">Erro ao carregar dados</p>
-          <p className="text-sm text-gray-500">Tente novamente mais tarde</p>
+          <pre>{(error as Error).message || String(error)}</pre>
         </div>
       </div>
     );
   }
-  
-  // Se não houver dados
-  if (!data || data.length === 0) {
-    return (
-      <div className="h-full flex flex-col">
-        <div className="mb-4 flex justify-between">
+
+  return (
+    <Card className="h-full flex flex-col">
+      <CardHeader className="flex items-center justify-between">
+        <CardTitle>Anomalias de Consumo</CardTitle>
+
+        <div className="flex gap-2">
           <Select
             value={selectedTimeRange}
-            onValueChange={(value: 'week' | 'month' | 'quarter' | 'year') => setSelectedTimeRange(value)}
+            onValueChange={(value) =>
+              setSelectedTimeRange(value as typeof selectedTimeRange)
+            }
           >
-            <SelectTrigger className="w-[180px] h-8">
+            <SelectTrigger className="w-32">
               <SelectValue placeholder="Período" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="week">Esta Semana</SelectItem>
-              <SelectItem value="month">Este Mês</SelectItem>
-              <SelectItem value="quarter">Este Trimestre</SelectItem>
-              <SelectItem value="year">Este Ano</SelectItem>
+              <SelectItem value="week">Última Semana</SelectItem>
+              <SelectItem value="month">Último Mês</SelectItem>
+              <SelectItem value="quarter">Último Trimestre</SelectItem>
+              <SelectItem value="year">Último Ano</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={selectedView}
+            onValueChange={(value) =>
+              setSelectedView(value as typeof selectedView)
+            }
+          >
+            <SelectTrigger className="w-24">
+              <SelectValue placeholder="Visualização" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="list">Lista</SelectItem>
+              <SelectItem value="chart">Gráfico</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        
-        <div className="flex-1 flex items-center justify-center bg-green-50 rounded-lg">
-          <div className="text-center p-6">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
-              <Check className="h-6 w-6 text-green-600" />
-            </div>
-            <h3 className="text-base font-semibold text-gray-900">Nenhuma anomalia detectada</h3>
-            <p className="mt-1 text-sm text-gray-500">Todos os padrões de consumo estão normais.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="h-full flex flex-col">
-      <div className="mb-4 flex justify-between">
-        <Select
-          value={selectedTimeRange}
-          onValueChange={(value: 'week' | 'month' | 'quarter' | 'year') => setSelectedTimeRange(value)}
-        >
-          <SelectTrigger className="w-[180px] h-8">
-            <SelectValue placeholder="Período" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="week">Esta Semana</SelectItem>
-            <SelectItem value="month">Este Mês</SelectItem>
-            <SelectItem value="quarter">Este Trimestre</SelectItem>
-            <SelectItem value="year">Este Ano</SelectItem>
-          </SelectContent>
-        </Select>
-        
-        <Select
-          value={selectedView}
-          onValueChange={(value: 'list' | 'chart') => setSelectedView(value)}
-        >
-          <SelectTrigger className="w-[180px] h-8">
-            <SelectValue placeholder="Visualização" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="list">Lista</SelectItem>
-            <SelectItem value="chart">Gráfico</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
-      {selectedView === 'chart' ? (
-        <div className="flex-1 min-h-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <ScatterChart
-              margin={{
-                top: 20,
-                right: 20,
-                bottom: 20,
-                left: 30,
-              }}
-            >
+      </CardHeader>
+
+      <CardContent className="flex-grow overflow-auto">
+        {selectedView === 'list' ? (
+          <>
+            {Object.entries(anomaliesByType).map(([typeKey, anomalies]) => {
+              const type = typeKey as AnomalyType;
+              if (anomalies.length === 0) return null;
+
+              return (
+                <section key={type} className="mb-6">
+                  <h3 className="mb-2 text-lg font-semibold text-gray-700">
+                    {anomalyTypeNames[type]}
+                  </h3>
+                  <div className="space-y-2">
+                    {anomalies.map((anomaly) => (
+                      <article
+                        key={anomaly.id}
+                        className="border rounded p-3 flex items-center gap-4 hover:bg-gray-50"
+                        aria-label={`Anomalia ${anomalyTypeNames[type]} unidade ${anomaly.unitName}`}
+                      >
+                        <div>{renderSeverityIcon(anomaly.confidence)}</div>
+                        <div className="flex-grow">
+                          <p className="font-medium">{anomaly.unitName}</p>
+                          <p className="text-sm text-gray-500">
+                            {new Date(anomaly.date).toLocaleString()}
+                          </p>
+                          <p className="text-sm text-gray-600">{anomaly.details}</p>
+                          <p className="text-sm text-gray-700">
+                            Valor: {anomaly.value.toFixed(2)} (Esperado:{' '}
+                            {anomaly.expectedValue.toFixed(2)}), Desvio:{' '}
+                            {(anomaly.deviation * 100).toFixed(1)}%
+                          </p>
+                        </div>
+                        <div>{renderStatusBadge(anomaly.status)}</div>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </>
+        ) : (
+          <ResponsiveContainer width="100%" height={400}>
+            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 type="number"
-                dataKey="x"
-                name="Data"
-                domain={['auto', 'auto']}
-                tickFormatter={(unixTime) => new Date(unixTime).toLocaleDateString('pt-BR')}
-                label={{ value: 'Data', position: 'insideBottomRight', offset: -10 }}
+                dataKey="value"
+                name="Valor"
+                label={{ value: 'Valor', position: 'insideBottomRight', offset: 0 }}
               />
               <YAxis
                 type="number"
-                dataKey="y"
-                name="Consumo"
-                label={{ value: 'Consumo (kWh)', angle: -90, position: 'insideLeft' }}
+                dataKey="expectedValue"
+                name="Valor Esperado"
+                label={{ value: 'Valor Esperado', angle: -90, position: 'insideLeft' }}
               />
-              <ZAxis type="number" dataKey="z" range={[40, 160]} />
+              <ZAxis
+                type="number"
+                dataKey="confidence"
+                range={[60, 400]}
+                name="Confiança"
+              />
               <Tooltip
                 cursor={{ strokeDasharray: '3 3' }}
-                formatter={(value: any, name: any, props: any) => {
-                  const { anomaly } = props.payload;
-                  if (name === 'Consumo') {
-                    return [`${value} kWh`, name];
-                  }
-                  return [value, name];
-                }}
-                labelFormatter={(value) => `Data: ${new Date(value).toLocaleDateString('pt-BR')}`}
+                formatter={(value: number, name: string) => [
+                  name === 'confidence' ? (value * 100).toFixed(1) + '%' : value.toFixed(2),
+                  name,
+                ]}
               />
+              {Object.entries(anomaliesByType).map(([typeKey, anomalies]) => {
+                const type = typeKey as AnomalyType;
+                if (anomalies.length === 0) return null;
+                return (
+                  <Scatter
+                    key={type}
+                    name={anomalyTypeNames[type]}
+                    data={anomalies}
+                    fill={anomalyTypeColors[type].dark}
+                  />
+                );
+              })}
               <Legend />
-              
-              {Object.entries(anomaliesByType).map(([type, anomalies]) => (
-                <Scatter
-                  key={type}
-                  name={anomalyTypeNames[type as AnomalyType]}
-                  data={chartData.filter(d => d.anomaly.type === type)}
-                  fill={anomalyTypeColors[type as AnomalyType].dark}
-                />
-              ))}
             </ScatterChart>
           </ResponsiveContainer>
-        </div>
-      ) : (
-        <div className="flex-1 overflow-auto">
-          <div className="space-y-3">
-            {Object.entries(anomaliesByType).map(([type, anomalies]) => (
-              <div key={type} className="space-y-2">
-                <h3 className="text-sm font-semibold text-gray-700">
-                  {anomalyTypeNames[type as AnomalyType]}
-                </h3>
-                
-                {anomalies.map((anomaly) => (
-                  <Card key={anomaly.id} className={`shadow-sm border-l-4`} style={{ borderLeftColor: anomalyTypeColors[anomaly.type].dark }}>
-                    <CardHeader className="p-3 pb-0">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            {renderSeverityIcon(anomaly.confidence)}
-                            {anomaly.unitName}
-                          </CardTitle>
-                          <CardDescription className="text-xs">
-                            {new Date(anomaly.date).toLocaleDateString('pt-BR')}
-                          </CardDescription>
-                        </div>
-                        {renderStatusBadge(anomaly.status)}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-2">
-                      <div className="text-xs text-gray-700">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <span className="text-gray-500">Valor:</span> {anomaly.value} kWh
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Esperado:</span> {anomaly.expectedValue} kWh
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Desvio:</span> {(anomaly.deviation * 100).toFixed(1)}%
-                          </div>
-                          <div>
-                            <span className="text-gray-500">Confiança:</span> {(anomaly.confidence * 100).toFixed(0)}%
-                          </div>
-                        </div>
-                        <p className="mt-2">{anomaly.details}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

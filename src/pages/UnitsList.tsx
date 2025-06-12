@@ -24,14 +24,7 @@ interface Unit {
   updatedAt: string;
 }
 
-// Interface da distribuidora
-interface Concessionaire {
-  id: number;
-  name: string;
-  region: string;
-  createdAt: string;
-  updatedAt: string;
-}
+
 
 export default function UnitsList() {
   const [searchTerm, setSearchTerm] = useState('');

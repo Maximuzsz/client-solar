@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useStripe, Elements, PaymentElement, useElements } from '@stripe/react-stripe-js'
-import { loadStripe } from '@stripe/stripe-js'
+import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js'
 import { Layout } from '@/components/layout/Layout'
 import { apiRequest } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
@@ -144,12 +144,11 @@ export default function Subscribe() {
     )
   }
 
-  // @ts-ignore - Corrigindo erro de tipagem do Stripe Elements
-  const options = {
+  const options: StripeElementsOptions = {
     clientSecret,
     appearance: {
-      theme: 'stripe',
-      labels: 'floating',
+      theme: 'stripe' as const, // Fix: Use 'as const' to narrow the type
+      labels: 'floating' as const,
     },
   }
 

@@ -1,18 +1,16 @@
-import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Edit, Trash2, Search, Eye, BarChart2, AlertCircle, Users, Zap, Activity } from 'lucide-react'
 import { Layout } from '@/components/layout/Layout'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { networksAPI } from '@/services/api'
-import { useToast } from '@/hooks/use-toast'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useToast } from '@/hooks/use-toast'
+import { networksAPI } from '@/services/api'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Activity, AlertCircle, BarChart2, Edit, Eye, Plus, Search, Trash2, Users, Zap } from 'lucide-react'
+import { useState } from 'react'
 
 // Interface da rede
 interface Network {
@@ -93,10 +91,11 @@ export default function Networks() {
   }
 
   // Filtra as redes com base no termo de pesquisa
-  const filteredNetworks = networks?.filter(network => 
+  const filteredNetworks = networks?.filter((network: Network) => 
     network.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     network.description.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
 
   // Função para buscar detalhes de uma rede
   const fetchNetworkDetails = async (id: number) => {
@@ -104,7 +103,7 @@ export default function Networks() {
       console.log(`Buscando rede com ID: ${id}`);
       
       // Verificar se a rede já está disponível no estado local
-      const networkInState = networks?.find(n => n.id === id);
+      const networkInState = networks?.find((n: Network) => n.id === id);
       if (networkInState) {
         console.log('Rede encontrada no estado local:', networkInState);
         return networkInState;
@@ -148,7 +147,7 @@ export default function Networks() {
       console.log(`Iniciando visualização da rede com ID: ${id}`);
       
       // Verificar primeiro se a rede já está disponível no estado local
-      const networkInState = networks?.find(n => n.id === id);
+      const networkInState = networks?.find((n: Network) => n.id === id);
       
       if (networkInState) {
         console.log('Rede encontrada no estado local para visualização:', networkInState);
@@ -187,7 +186,7 @@ export default function Networks() {
       console.log(`Iniciando edição da rede com ID: ${id}`);
       
       // Verificar primeiro se a rede já está disponível no estado local
-      const networkInState = networks?.find(n => n.id === id);
+      const networkInState = networks?.find((n: Network) => n.id === id);
       
       if (networkInState) {
         console.log('Rede encontrada no estado local para edição:', networkInState);
@@ -329,9 +328,9 @@ export default function Networks() {
   // Calcular estatísticas das redes
   const networkStats = {
     total: networks?.length || 0,
-    active: networks?.filter(n => n.active).length || 0,
-    inactive: networks?.filter(n => !n.active).length || 0,
-    totalUnits: networks?.reduce((sum, network) => sum + (network.unitCount || 0), 0) || 0
+    active: networks?.filter((n: Network) => n.active).length || 0,
+    inactive: networks?.filter((n: Network) => !n.active).length || 0,
+    totalUnits: networks?.reduce((sum: number, network: Network) => sum + (network.unitCount || 0), 0) || 0
   };
   
   return (
@@ -649,7 +648,7 @@ export default function Networks() {
                   </tr>
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
-                  {filteredNetworks?.map((network, index) => (
+                  {filteredNetworks?.map((network: Network, index: number) => (
                     <tr 
                       key={network.id} 
                       className="border-b transition-colors hover:bg-muted/30 data-[state=selected]:bg-muted animate-fadeIn"

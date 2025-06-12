@@ -1,46 +1,60 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { useLocation } from 'wouter'
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Layout } from '@/components/layout/Layout'
-import { 
-  CreditCard, 
-  Package, 
-  Check, 
-  Clock, 
-  CalendarDays,
-  Banknote, 
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card'
+import { useQuery } from '@tanstack/react-query'
+import {
   ArrowRight,
-  Sparkles
+  Banknote,
+  CalendarDays,
+  Check,
+  Clock,
+  CreditCard,
+  Package
 } from 'lucide-react'
+import { useLocation } from 'wouter'
 
-// Importando as funções e interfaces da API de pagamento
-import { 
-  getCurrentSubscription, 
-  getPaymentHistory,
-  type CurrentSubscription, 
-  type PaymentHistory
-} from '@/lib/payment'
+// Importando apenas o que existe no módulo de pagamento
+import { getCurrentSubscription, getPaymentHistory } from '@/lib/payment'
+
+// Definindo as interfaces localmente
+interface Payment {
+  status: 'Pago' | 'Pendente' | 'Falha' | 'Falhou'
+  planName: string
+  date: string
+  value: number
+  invoiceId?: string
+}
+
+interface Subscription {
+  active: boolean
+  plan: {
+    name: string
+    price: number
+  }
+  nextBillingDate?: string
+  features?: Array<{
+    name: string
+    limit: string
+  }>
+}
 
 export default function Billing() {
-  const [showCancelModal, setShowCancelModal] = useState(false)
   const [, setLocation] = useLocation()
 
   // Consulta para obter dados da assinatura atual
-  const { data: subscription, isLoading: loadingSubscription } = useQuery({
+  const { data: subscription, isLoading: loadingSubscription } = useQuery<Subscription>({
     queryKey: ['/api/v1/payments/current-subscription'],
     queryFn: getCurrentSubscription
   })
 
   // Consulta para obter histórico de pagamentos
-  const { data: paymentHistory, isLoading: loadingPaymentHistory } = useQuery({
+  const { data: paymentHistory, isLoading: loadingPaymentHistory } = useQuery<Payment[]>({
     queryKey: ['/api/v1/payments/payment-history'],
     queryFn: getPaymentHistory
   })
@@ -49,7 +63,8 @@ export default function Billing() {
   const isLoading = loadingSubscription || loadingPaymentHistory
 
   // Formatador de data
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Não disponível'
     const date = new Date(dateString)
     return new Intl.DateTimeFormat('pt-BR', {
       day: 'numeric',
@@ -59,11 +74,11 @@ export default function Billing() {
   }
 
   // Formatador de moeda
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount?: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(amount)
+    }).format(amount || 0)
   }
 
   if (isLoading) {
@@ -87,83 +102,82 @@ export default function Billing() {
         </div>
 
         {/* Seção de Assinatura */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Assinatura Atual</h2>
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl">{subscription?.plan.name || 'Plano Básico'}</CardTitle>
-                  <CardDescription>
-                    {subscription?.active ? 'Assinatura ativa' : 'Assinatura inativa'}
-                  </CardDescription>
+        {subscription && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Assinatura Atual</h2>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl">{subscription.plan.name}</CardTitle>
+                    <CardDescription>
+                      {subscription.active ? 'Assinatura ativa' : 'Assinatura inativa'}
+                    </CardDescription>
+                  </div>
+                  <span className="text-2xl font-bold">
+                    {formatCurrency(subscription.plan.price)}
+                  </span>
                 </div>
-                <span className="text-2xl font-bold">
-                  {formatCurrency(subscription?.plan.price || 0)}/mês
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="flex items-start space-x-3">
-                    <CalendarDays className="mt-1 h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Próxima fatura</p>
-                      <p className="text-sm text-muted-foreground">
-                        {subscription?.nextBillingDate
-                          ? formatDate(subscription.nextBillingDate)
-                          : 'Não disponível'}
-                      </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="flex items-start space-x-3">
+                      <CalendarDays className="mt-1 h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Próxima fatura</p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(subscription.nextBillingDate)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-3">
+                      <Clock className="mt-1 h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Status</p>
+                        <p className="text-sm text-muted-foreground">
+                          {subscription.active ? 'Ativa' : 'Inativa'}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-start space-x-3">
-                    <Clock className="mt-1 h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Status</p>
-                      <p className="text-sm text-muted-foreground">
-                        {subscription?.active 
-                          ? 'Ativa' 
-                          : 'Inativa'}
-                      </p>
+
+                  {subscription.features && subscription.features.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="font-medium">Recursos incluídos:</p>
+                      <ul className="space-y-2">
+                        {subscription.features.map((feature, index) => (
+                          <li key={index} className="flex items-start">
+                            <Check className="mr-2 h-5 w-5 text-green-500" />
+                            <span>{feature.name}: {feature.limit}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="font-medium">Recursos incluídos:</p>
-                  <ul className="space-y-2">
-                    {subscription?.features?.map((feature, index) => (
-                      <li key={index} className="flex items-start">
-                        <Check className="mr-2 h-5 w-5 text-green-500" />
-                        <span>{feature.name}: {feature.limit}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="flex flex-col space-y-2 pt-2 sm:flex-row sm:space-x-2 sm:space-y-0">
-                  <Button 
-                    variant="default"
-                    onClick={() => setLocation('/plans')}
-                  >
-                    <Package className="mr-2 h-4 w-4" />
-                    Ver todos os planos
-                  </Button>
-                  {subscription?.active && (
-                    <Button 
-                      variant="outline" 
-                      className="text-destructive hover:bg-destructive/10"
-                      onClick={() => setShowCancelModal(true)}
-                    >
-                      Cancelar assinatura
-                    </Button>
                   )}
+
+                  <div className="flex flex-col space-y-2 pt-2 sm:flex-row sm:space-x-2 sm:space-y-0">
+                    <Button 
+                      variant="default"
+                      onClick={() => setLocation('/plans')}
+                    >
+                      <Package className="mr-2 h-4 w-4" />
+                      Ver todos os planos
+                    </Button>
+                    {subscription.active && (
+                      <Button 
+                        variant="outline" 
+                        className="text-destructive hover:bg-destructive/10"
+                      >
+                        Cancelar assinatura
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Seção de Métodos de Pagamento */}
         <div className="space-y-4">

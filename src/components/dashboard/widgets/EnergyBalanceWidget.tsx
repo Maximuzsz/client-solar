@@ -1,27 +1,26 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import { WidgetConfig } from '@/services/dashboardCustomization/dashboardLayoutService';
-import { 
+import {
   Card,
   CardContent,
 } from '@/components/ui/card';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  ResponsiveContainer, 
-  Legend, 
-  Tooltip 
+import { apiRequest } from '@/lib/queryClient';
+import { WidgetConfig } from '@/services/dashboardCustomization/dashboardLayoutService';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowDownRight, ArrowUpRight, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip
 } from 'recharts';
-import { ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 
 interface EnergyBalanceWidgetProps {
   widget: WidgetConfig;

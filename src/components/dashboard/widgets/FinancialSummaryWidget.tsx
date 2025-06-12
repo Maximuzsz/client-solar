@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import { WidgetConfig } from '@/services/dashboardCustomization/dashboardLayoutService';
-import { 
+import { Progress } from '@/components/ui/progress';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
+import { WidgetConfig } from '@/services/dashboardCustomization/dashboardLayoutService';
+import { useQuery } from '@tanstack/react-query';
+import { TrendingDown, TrendingUp } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface FinancialSummaryWidgetProps {
   widget: WidgetConfig;
@@ -93,11 +93,9 @@ const FinancialSummaryWidget: React.FC<FinancialSummaryWidgetProps> = ({ widget 
   
   const { 
     currentSavings,
-    previousSavings,
     savingsChange,
     consumptionCost,
     generationValue,
-    netSavings,
     monthlySavings = [],
     projectedAnnualSavings,
     roi,

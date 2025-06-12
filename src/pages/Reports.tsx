@@ -1,23 +1,6 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { useLocation } from 'wouter'
-import { FileText, Download, BarChart, Filter, Calendar, ArrowLeft } from 'lucide-react'
 import { Layout } from '@/components/layout/Layout'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { reportsAPI } from '@/services/api'
-import { useToast } from '@/hooks/use-toast'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { format, parseISO } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select'
 import {
   Card,
   CardContent,
@@ -26,7 +9,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { useToast } from '@/hooks/use-toast'
+import { reportsAPI } from '@/services/api'
+import { useQuery } from '@tanstack/react-query'
+import { format } from 'date-fns'
+import { BarChart, Download, FileText, Filter } from 'lucide-react'
+import { useState } from 'react'
+import { useLocation } from 'wouter'
 
 // Interface do relatório
 interface Report {
@@ -43,6 +41,12 @@ interface Report {
   networkName?: string
 }
 
+interface FilterState {
+  period: string
+  status: string
+  network: string
+}
+
 export default function Reports() {
   const { toast } = useToast()
   const [, setLocation] = useLocation()
@@ -50,14 +54,14 @@ export default function Reports() {
   const [openFilterDialog, setOpenFilterDialog] = useState(false)
   const [openViewDialog, setOpenViewDialog] = useState(false)
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
-  const [filter, setFilter] = useState({
+  const [filter, setFilter] = useState<FilterState>({
     period: '',
     status: '',
     network: ''
   })
 
   // Consulta para obter os relatórios
-  const { data: reports, isLoading, error } = useQuery({
+  const { data: reports, isLoading, error } = useQuery<Report[]>({
     queryKey: ['reports'],
     queryFn: async () => {
       try {
@@ -92,12 +96,10 @@ export default function Reports() {
   // Função para aplicar filtros
   const handleApplyFilters = () => {
     setOpenFilterDialog(false);
-    // Os filtros já estão armazenados no estado, 
-    // então só precisamos fechar o diálogo
   };
   
   // Filtra os relatórios de acordo com os filtros aplicados
-  const filteredReports = reports?.filter(report => {
+  const filteredReports = reports?.filter((report: Report) => {
     let passesFilter = true;
     
     if (filter.period && report.period !== filter.period) {

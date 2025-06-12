@@ -6,31 +6,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/useAuth'
-import concessionairesAPI from '@/services/concessionairesAPI'
+import concessionairesAPI, { EnrichedConcessionaire } from '@/services/concessionairesAPI'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Plus, Search } from 'lucide-react'
 import { useState } from 'react'
 
-interface Tariff {
-  id: number;
-  value: number;
-  type: 'Residential' | 'Commercial' | 'Industrial';
-  startDate: string;
-  endDate: string | null;
-  createdAt: string;
-}
-
-interface Concessionaire {
-  id: number;
-  name: string;
-  region: string;
-  createdAt: string;
-  updatedAt: string;
-  currentTariff?: Tariff | null;
-  previousTariff?: Tariff | null;
-}
 
 export default function Distribuidoras() {
   const { toast } = useToast();
@@ -108,10 +90,11 @@ export default function Distribuidoras() {
 
   // Filtrar distribuidoras
   const filteredDistribuidoras = distribuidoras?.filter(
-    (distribuidora: Concessionaire) => 
+    (distribuidora: EnrichedConcessionaire) =>
       distribuidora.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       distribuidora.region.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
 
   if (isLoading) {
     return (

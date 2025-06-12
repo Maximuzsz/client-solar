@@ -1,78 +1,78 @@
-import { useState } from 'react';
-import { useParams, useLocation } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
 import { Layout } from '@/components/layout/Layout';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { FilterIcon, DownloadIcon, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { useToast } from '@/hooks/use-toast';
-import { handleExportLimit } from '@/lib/exportLimits';
+import Breadcrumbs from '@/components/ui/breadcrumbs';
+import { Button } from '@/components/ui/button';
+import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import Breadcrumbs from '@/components/ui/breadcrumbs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
+import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/api';
+import { handleExportLimit } from '@/lib/exportLimits';
+import { createExtraReportPayment, exportToPdf, registerExport } from '@/lib/pdfExport';
+import { checkExportLimit } from '@/lib/reportLimits';
 import { networksAPI } from '@/services/networksAPI';
 import { unitsAPI } from '@/services/unitsAPI';
-import { Unit, Reading } from '@/types';
-import { exportToPdf, registerExport, createExtraReportPayment } from '@/lib/pdfExport';
-import { checkExportLimit } from '@/lib/reportLimits';
+import { Unit } from '@/types';
+import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { DownloadIcon, FileText, FilterIcon } from 'lucide-react';
+import { useState } from 'react';
+import { useLocation, useParams } from 'wouter';
 
-// Interface para os dados de balanço da rede
 interface UnitBalance {
   id: number;
   name: string;
   type: 'Consumer' | 'Generator';
-  consumption: number; // em kWh
-  costPerKwh: number;  // valor da tarifa
-  totalCost: number;   // consumo * tarifa
-  generation: number;  // geração em kWh (0 para consumidores)
-  excessPayment: number; // valor proporcional excedente a pagar
+  consumption: number;
+  costPerKwh: number;
+  totalCost: number;
+  generation: number;
+  excessPayment: number;
 }
 
-// Esta interface está sendo usada diretamente na implementação
-interface NetworkBalanceInfo {
+interface ExportLimitResult {
+  remaining: number;
+}
+
+interface BalanceData {
   totalConsumption: number;
   totalGeneration: number;
-  surplus: number; // Excedente (positivo) ou déficit (negativo)
+  surplus: number;
   totalCost: number;
   units: UnitBalance[];
 }
 
 export default function NetworkBalance() {
   const { networkId } = useParams();
-  const [, setLocation] = useLocation();
+  const [,] = useLocation();
   const { toast } = useToast();
   
-  // Estado para o filtro de mês/ano
   const [filterMonth, setFilterMonth] = useState<Date | undefined>(new Date());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // Consulta para obter a rede atual
   const { data: network, isLoading: isNetworkLoading } = useQuery({
     queryKey: ['network', networkId],
     queryFn: async () => {
       try {
-        if (networkId) {
-          const data = await networksAPI.getById(Number(networkId));
-          console.log('Dados da rede obtidos:', data);
-          return data || { id: Number(networkId), name: "Rede não encontrada", description: "", ownerId: 0 };
+        if (!networkId) {
+          return { id: 0, name: "Rede não encontrada", description: "", ownerId: 0 };
         }
-        return { id: 0, name: "Rede não encontrada", description: "", ownerId: 0 };
+
+        const data = await networksAPI.getById(Number(networkId));
+        return data || { id: Number(networkId), name: "Rede não encontrada", description: "", ownerId: 0 };
       } catch (error) {
         console.error('Erro ao buscar rede:', error);
         toast({
@@ -86,59 +86,50 @@ export default function NetworkBalance() {
     enabled: !!networkId
   });
 
-  // Consulta para obter o balanço da rede (unidades + leituras + cálculos)
-  const { data: balanceData, isLoading: isBalanceLoading, refetch: refetchBalance } = useQuery({
+  const { data: balanceData, isLoading: isBalanceLoading, refetch: refetchBalance } = useQuery<BalanceData>({
     queryKey: ['network-balance', networkId, filterMonth ? format(filterMonth, 'yyyy-MM') : 'all'],
     queryFn: async () => {
       try {
-        // Aqui faremos a chamada para a API que calcula o balanço da rede
-        // Por enquanto, vamos construir esse cálculo no frontend como uma solução temporária
-        
-        // 1. Obter todas as unidades da rede
-        const units = networkId ? await unitsAPI.getByNetwork(Number(networkId)) : [];
+        if (!networkId) {
+          return {
+            totalConsumption: 0,
+            totalGeneration: 0,
+            surplus: 0,
+            totalCost: 0,
+            units: []
+          };
+        }
+
+        const units = await unitsAPI.getByNetwork(networkId);
         
         if (!Array.isArray(units)) {
           throw new Error("Não foi possível obter as unidades da rede");
         }
 
-        // 2. Para cada unidade, obter as leituras no período filtrado
         const month = filterMonth ? filterMonth.getMonth() + 1 : new Date().getMonth() + 1;
         const year = filterMonth ? filterMonth.getFullYear() : new Date().getFullYear();
         
-        // Formatar datas para filtro
         const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
         const lastDay = new Date(year, month, 0).getDate();
         const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-        // 3. Obter tarifa atual da concessionária
-        // Assumindo uma tarifa padrão de exemplo (R$ 0.75 por kWh) para todas as unidades
-        // Idealmente, isso viria da API com a tarifa correta de cada concessionária
         const defaultTariff = 0.75;
-        
-        // 4. Calcular o balanço de cada unidade
         let totalConsumption = 0;
         let totalGeneration = 0;
         let totalCost = 0;
         
         const unitsBalance: UnitBalance[] = await Promise.all(units.map(async (unit: Unit) => {
           try {
-            // Buscar leituras da unidade no período filtrado
             const response = await apiRequest('GET', `/readings/unit/${unit.id}?startDate=${startDate}&endDate=${endDate}`);
-            console.log(`Leituras da unidade ${unit.id}:`, response);
-            const readings: Reading[] = Array.isArray(response) ? response : [];
+            const readings = Array.isArray(response) ? response : [];
             
-            // Somar os valores das leituras (consumo ou geração dependendo do tipo da unidade)
             const totalValue = readings.reduce((sum, reading) => sum + reading.value, 0);
-            
-            // Determinar se é consumo ou geração baseado no tipo da unidade
             const consumption = unit.type === 'Consumer' ? totalValue : 0;
             const generation = unit.type === 'Generator' ? totalValue : 0;
             
-            // Acumular totais
             totalConsumption += consumption;
             totalGeneration += generation;
             
-            // Calcular custo total (apenas para unidades consumidoras)
             const unitCost = consumption * defaultTariff;
             totalCost += unitCost;
 
@@ -150,7 +141,7 @@ export default function NetworkBalance() {
               costPerKwh: defaultTariff,
               totalCost: unitCost,
               generation,
-              excessPayment: 0 // Será calculado depois
+              excessPayment: 0
             };
           } catch (error) {
             console.error(`Erro ao processar unidade ${unit.id}:`, error);
@@ -167,26 +158,13 @@ export default function NetworkBalance() {
           }
         }));
         
-        // 5. Calcular o excedente geral e os pagamentos proporcionais
         const surplus = totalGeneration - totalConsumption;
         
-        // Se houver déficit (geração menor que consumo), calcular pagamento excedente proporcional
         if (surplus < 0) {
-          const deficit = Math.abs(surplus);
-          const deficitCost = deficit * defaultTariff;
           
-          // Distribuir o custo do déficit proporcionalmente entre os consumidores
-          const consumerUnits = unitsBalance.filter(unit => unit.type === 'Consumer');
-          const totalConsumerConsumption = consumerUnits.reduce((sum, unit) => sum + unit.consumption, 0);
-          
-          // Atualizar os pagamentos excedentes para cada unidade consumidora
-          // Importante: o excessPayment não deve ser somado ao custo base, pois isso duplicaria o valor
           unitsBalance.forEach(unit => {
             if (unit.type === 'Consumer' && unit.consumption > 0) {
-              const proportion = unit.consumption / totalConsumerConsumption;
-              // Calcular o pagamento excedente apenas para exibição
-              // O valor não deve ser somado ao custo total, pois já está incluído no custo base
-              unit.excessPayment = 0; // Para evitar soma duplicada no cálculo
+              unit.excessPayment = 0;
             }
           });
         }
@@ -224,8 +202,6 @@ export default function NetworkBalance() {
     }).format(value);
   };
 
-  // A função showUpgradeMessage agora é importada do arquivo de utilidades
-
   const handleExportCSV = async () => {
     if (!balanceData || !balanceData.units.length) {
       toast({
@@ -236,33 +212,26 @@ export default function NetworkBalance() {
       return;
     }
 
-    // Verificar limite de exportação usando nossa função utilitária
-    let exportLimitResult;
+    let exportLimitResult: ExportLimitResult | undefined;
     const canProceed = await handleExportLimit(
       checkExportLimit,
       'ExportCSV',
       createExtraReportPayment,
       networkId,
-      (result) => { exportLimitResult = result; }
+      (result: ExportLimitResult) => { exportLimitResult = result; }
     );
     
-    if (!canProceed) {
-      return; // Não prosseguir se não puder exportar
-    }
+    if (!canProceed) return;
     
     try {
-      // Cabeçalho do CSV
       let csvContent = "ID,Nome,Tipo,Consumo (kWh),Tarifa (R$/kWh),Custo Total (R$),Geração (kWh),Pagamento Excedente (R$)\n";
       
-      // Adicionar dados de cada unidade
       balanceData.units.forEach(unit => {
         csvContent += `${unit.id},${unit.name},${unit.type},${unit.consumption},${unit.costPerKwh.toFixed(2)},${unit.totalCost.toFixed(2)},${unit.generation},${unit.excessPayment.toFixed(2)}\n`;
       });
       
-      // Adicionar linha de totais
       csvContent += `\nTotal,,,"${balanceData.totalConsumption}",,"${balanceData.totalCost.toFixed(2)}","${balanceData.totalGeneration}",`;
       
-      // Criar blob e link para download
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -272,10 +241,8 @@ export default function NetworkBalance() {
       link.click();
       document.body.removeChild(link);
       
-      // Registrar exportação no sistema
       await registerExport('ExportCSV', undefined, networkId ? parseInt(networkId) : undefined);
       
-      // Mostrar mensagem de limite restante
       let limitMessage = 'Exportação concluída com sucesso.';
       if (exportLimitResult && exportLimitResult.remaining > 0) {
         limitMessage += ` Você tem ${exportLimitResult.remaining} exportações CSV restantes neste mês.`;
@@ -305,19 +272,16 @@ export default function NetworkBalance() {
       return;
     }
 
-    // Verificar limite de exportação usando nossa função utilitária
-    let exportLimitResult;
+    let exportLimitResult: ExportLimitResult | undefined;
     const canProceed = await handleExportLimit(
       checkExportLimit,
       'ExportPDF',
       createExtraReportPayment,
       networkId ? parseInt(networkId) : undefined,
-      (result) => { exportLimitResult = result; }
+      (result: ExportLimitResult) => { exportLimitResult = result; }
     );
     
-    if (!canProceed) {
-      return; // Não prosseguir se não puder exportar
-    }
+    if (!canProceed) return;
     
     try {
       const columns = [
@@ -331,7 +295,6 @@ export default function NetworkBalance() {
         { header: 'Pagamento Excedente (R$)', dataKey: 'excessPayment' }
       ];
       
-      // Preparar dados formatados para o PDF
       const data = balanceData.units.map(unit => ({
         id: unit.id,
         name: unit.name,
@@ -343,7 +306,6 @@ export default function NetworkBalance() {
         excessPayment: unit.excessPayment
       }));
       
-      // Dados de resumo/totais para o rodapé
       const summaryData = {
         name: 'Total',
         consumption: balanceData.totalConsumption.toString(),
@@ -351,10 +313,8 @@ export default function NetworkBalance() {
         generation: balanceData.totalGeneration.toString()
       };
       
-      // Nome da rede para o título do relatório
       const networkName = network?.name || `Rede #${networkId}`;
       
-      // Opções do PDF
       const exportOptions = {
         title: `Balanço Energético - ${networkName}`,
         subtitle: `Período: ${format(filterMonth || new Date(), 'MMMM yyyy', { locale: ptBR })}`,
@@ -364,13 +324,10 @@ export default function NetworkBalance() {
         summaryData
       };
       
-      // Gerar o PDF
       exportToPdf(columns, data, exportOptions);
       
-      // Registrar exportação no sistema
       await registerExport('ExportPDF', undefined, networkId ? parseInt(networkId) : undefined);
       
-      // Mostrar mensagem de limite restante
       let limitMessage = 'Exportação concluída com sucesso.';
       if (exportLimitResult && exportLimitResult.remaining > 0) {
         limitMessage += ` Você tem ${exportLimitResult.remaining} exportações PDF restantes neste mês.`;
@@ -389,7 +346,6 @@ export default function NetworkBalance() {
       });
     }
   };
-
   const isLoading = isNetworkLoading || isBalanceLoading;
 
   return (
@@ -412,7 +368,6 @@ export default function NetworkBalance() {
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Filtro por mês */}
             <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="flex items-center gap-2">
@@ -429,23 +384,22 @@ export default function NetworkBalance() {
                 <Calendar
                   mode="single"
                   selected={filterMonth}
-                  onSelect={(date: Date | undefined) => {
+                  onSelect={(date) => {
                     setFilterMonth(date);
                     setIsFilterOpen(false);
                     if (date) {
                       refetchBalance();
                     }
                   }}
-                  captionLayout="dropdown-buttons"
+                  captionLayout="dropdown" // Corrigido de "dropdown-buttons" para "dropdown"
                   fromYear={2020}
                   toYear={2030}
-                  disabled={(date: Date) => date > new Date()}
+                  disabled={(date) => date > new Date()}
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
 
-            {/* Botão para exportar CSV */}
             <Button 
               variant="outline" 
               className="flex items-center gap-2 mr-2"
@@ -456,7 +410,6 @@ export default function NetworkBalance() {
               <span>Exportar CSV</span>
             </Button>
             
-            {/* Botão para exportar PDF */}
             <Button 
               variant="outline" 
               className="flex items-center gap-2"
@@ -475,7 +428,6 @@ export default function NetworkBalance() {
           </div>
         ) : (
           <>
-            {/* Cards com informações consolidadas */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="pb-2">
@@ -518,7 +470,6 @@ export default function NetworkBalance() {
               </Card>
             </div>
 
-            {/* Tabela com detalhes de cada unidade */}
             <Card>
               <CardHeader>
                 <CardTitle>Detalhes por Unidade</CardTitle>
@@ -544,8 +495,10 @@ export default function NetworkBalance() {
                         <TableCell>{unit.id}</TableCell>
                         <TableCell>{unit.name}</TableCell>
                         <TableCell>
-                          <Badge variant={unit.type === 'Consumer' ? 'default' : 'outline'} 
-                                 className={unit.type === 'Generator' ? 'bg-green-100 text-green-800 hover:bg-green-200 border-green-300' : ''}>
+                          <Badge 
+                            variant={unit.type === 'Consumer' ? 'default' : 'outline'} 
+                            className={unit.type === 'Generator' ? 'bg-green-100 text-green-800 hover:bg-green-200 border-green-300' : ''}
+                          >
                             {unit.type === 'Consumer' ? 'Consumidor' : 'Gerador'}
                           </Badge>
                         </TableCell>
@@ -558,8 +511,6 @@ export default function NetworkBalance() {
                         </TableCell>
                         <TableCell className="text-right font-bold">
                           {formatCurrency(
-                            // Se for uma unidade consumidora com excedente, somamos o custo base com o pagamento do excedente
-                            // Se não houver excedente, o total é igual ao custo base
                             unit.type === 'Consumer' ? 
                               (unit.excessPayment > 0 ? 
                                 unit.totalCost + unit.excessPayment : 
@@ -570,7 +521,6 @@ export default function NetworkBalance() {
                       </TableRow>
                     ))}
                     
-                    {/* Linha de totais */}
                     {balanceData && balanceData.units.length > 0 && (
                       <TableRow className="bg-muted/50 font-medium">
                         <TableCell colSpan={3}>Total</TableCell>
@@ -580,11 +530,7 @@ export default function NetworkBalance() {
                         <TableCell className="text-right">{balanceData.totalGeneration.toFixed(2)}</TableCell>
                         <TableCell className="text-right">-</TableCell>
                         <TableCell className="text-right font-bold">
-                          {formatCurrency(
-                            // Calcular o total dos pagamentos (custo base, sem duplicação)
-                            // Quando há excedente, o custo já inclui o pagamento do excedente
-                            balanceData.totalCost
-                          )}
+                          {formatCurrency(balanceData.totalCost)}
                         </TableCell>
                       </TableRow>
                     )}

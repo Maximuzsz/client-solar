@@ -7,12 +7,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 let stripePromise: Promise<Stripe | null>;
 
 // Verifica se a chave pública do Stripe está disponível
-const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+const stripePublicKey = 'pk_test_your_stripe_public_key'
 
 if (!stripePublicKey) {
   console.error("Chave pública do Stripe não encontrada! Certifique-se de configurar a variável de ambiente VITE_STRIPE_PUBLIC_KEY.");
 } else {
-  stripePromise = loadStripe(stripePublicKey);
+  stripePromise = loadStripe(stripePublicKey); 
 }
 
 interface StripeProviderProps {

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import dashboardLayoutService, { WidgetConfig, WidgetType, DashboardLayout } from '@/services/dashboardCustomization/dashboardLayoutService';
-import { 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -10,41 +10,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Plus,
-  Grid,
-  Save,
-  LayoutTemplate,
-  Layers,
-  Settings,
-  FileCheck,
-  RotateCw,
-} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import dashboardLayoutService, { DashboardLayout, WidgetConfig, WidgetType } from '@/services/dashboardCustomization/dashboardLayoutService';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  FileCheck,
+  Grid,
+  LayoutTemplate,
+  Plus,
+  RotateCw,
+  Save
+} from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 
 // Importing components for the widgets
 import WidgetContainer from "./widgets/WidgetContainer";
-import ConsumptionChartWidget from "./widgets/ConsumptionChartWidget";
-import GenerationChartWidget from "./widgets/GenerationChartWidget";
-import EnergyBalanceWidget from "./widgets/EnergyBalanceWidget";
-import FinancialSummaryWidget from "./widgets/FinancialSummaryWidget";
-import ReadingHistoryWidget from "./widgets/ReadingHistoryWidget";
-import UnitsSummaryWidget from "./widgets/UnitsSummaryWidget";
-import PredictionChartWidget from "./widgets/PredictionChartWidget";
-import AnomalyDetectionWidget from "./widgets/AnomalyDetectionWidget";
-import WeatherForecastWidget from "./widgets/WeatherForecastWidget";
-import TariffAlertsWidget from "./widgets/TariffAlertsWidget";
 
 // Import gridster library for drag-n-drop feature
 import { Responsive, WidthProvider } from 'react-grid-layout';
@@ -71,7 +58,7 @@ const widgetTypeOptions = [
 // Grid configuration
 const GRID_COLS = 12;
 const GRID_ROW_HEIGHT = 100;
-const GRID_MARGIN = [10, 10];
+const GRID_MARGIN: [number, number] = [10, 10];
 
 const CustomizableDashboard = () => {
   const { toast } = useToast();
@@ -97,25 +84,6 @@ const CustomizableDashboard = () => {
     queryFn: async () => dashboardLayoutService.getLayouts(),
   });
   
-  // Consultar layout padrão
-  const { data: defaultLayout, isLoading: isLoadingDefaultLayout } = useQuery({
-    queryKey: ['/api/v1/dashboard/layouts/default'],
-    queryFn: async () => dashboardLayoutService.getDefaultLayout(),
-    onSuccess: (data) => {
-      if (!currentLayout) {
-        setCurrentLayout(data);
-        setWidgets(data.widgets);
-        setLayoutName(data.name);
-      }
-    },
-    onError: () => {
-      // Se não houver layout padrão, criar um com widgets padrão
-      const newLayout = dashboardLayoutService.getDefaultWidgets();
-      setCurrentLayout(newLayout);
-      setWidgets(newLayout.widgets);
-      setLayoutName(newLayout.name);
-    },
-  });
   
   // Mutação para salvar layout
   const saveMutation = useMutation({
@@ -146,8 +114,8 @@ const CustomizableDashboard = () => {
     },
     onError: (error) => {
       toast({
-        title: 'Erro ao salvar layout',
-        description: 'Ocorreu um erro ao salvar o layout. Tente novamente.',
+        title: 'Erro ao salvar layout,', 
+        description: error.message || 'Ocorreu um erro ao salvar o layout. Tente novamente.',
         variant: 'destructive',
       });
     },
@@ -171,33 +139,13 @@ const CustomizableDashboard = () => {
     onError: (error) => {
       toast({
         title: 'Erro ao carregar layout',
-        description: 'Ocorreu um erro ao carregar o layout. Tente novamente.',
+        description: error.message || 'Ocorreu um erro ao carregar o layout. Tente novamente.',
         variant: 'destructive',
       });
     },
   });
   
-  // Mutação para definir layout padrão
-  const setDefaultMutation = useMutation({
-    mutationFn: async (layoutId: string) => {
-      return dashboardLayoutService.setDefaultLayout(layoutId);
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/v1/dashboard/layouts/default'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/v1/dashboard/layouts'] });
-      toast({
-        title: 'Layout padrão definido',
-        description: `O layout "${data.name}" foi definido como padrão.`,
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Erro ao definir layout padrão',
-        description: 'Ocorreu um erro ao definir o layout padrão. Tente novamente.',
-        variant: 'destructive',
-      });
-    },
-  });
+
   
   // Callback para adicionar um novo widget
   const handleAddWidget = useCallback(() => {
@@ -205,15 +153,6 @@ const CustomizableDashboard = () => {
     
     const newWidget = dashboardLayoutService.getDefaultWidget(selectedWidgetType as WidgetType);
     
-    // Encontrar uma posição disponível no grid
-    const occupiedPositions = widgets.map(w => ({
-      x: w.layout.x,
-      y: w.layout.y,
-      w: w.layout.w,
-      h: w.layout.h,
-    }));
-    
-    let position = { x: 0, y: 0 };
     let maxY = 0;
     
     for (const widget of widgets) {

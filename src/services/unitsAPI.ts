@@ -19,7 +19,7 @@ export const unitsAPI = {
   /**
    * Busca unidades por rede
    */
-  getByNetwork: async (networkId: string | number) => {
+  getByNetwork: async (networkId: string) => {
     return apiRequest<Unit[]>('GET', `/units/network/${networkId}`);
   },
   

@@ -1,31 +1,30 @@
-import { useState } from 'react';
-import { useLocation } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
-import { Layout } from '@/components/layout/Layout';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { 
-  ChevronRight, 
-  Activity, 
-  Zap, 
-  BarChart3, 
-  Info,
-  Search
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/api';
-import { Network } from '@/types';
 import {
   EnergyGaugeChart,
   EnvironmentalImpact,
-  SolarConditions,
   FinancialSummary,
-  MonthlyComparisonChart
+  MonthlyComparisonChart,
+  SolarConditions
 } from '@/components/energy-balance';
+import { Layout } from '@/components/layout/Layout';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/api';
+import { Network } from '@/types';
+import { useQuery } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import {
+  Activity,
+  BarChart3,
+  ChevronRight,
+  Info,
+  Search,
+  Zap
+} from 'lucide-react';
+import { useState } from 'react';
+import { useLocation } from 'wouter';
 
 export default function EnergyBalance() {
   const [, navigate] = useLocation();
@@ -67,23 +66,6 @@ export default function EnergyBalance() {
       }
     }
   });
-
-  // Formatação de moeda
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
-
-  // Indicador de tendência positiva/negativa
-  const getTrend = (value: number) => {
-    if (value > 0) return 'positive';
-    if (value < 0) return 'negative';
-    return 'neutral';
-  };
-
-  const isLoading = isNetworksLoading || isOverviewLoading;
 
   return (
     <Layout>
