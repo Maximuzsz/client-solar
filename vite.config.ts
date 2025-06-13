@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    base: '/app/', // importante para funcionar no nginx
+    base: '/', // importante para funcionar no nginx
 
     plugins: [react()],
 
