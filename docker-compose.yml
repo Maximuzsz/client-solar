@@ -2,14 +2,14 @@ version: '3.8'
 
 services:
   frontend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "5000:80" # Map host port 5000 to container port 80
-    # IMPORTANT: Remove the volumes for src and public, they interfere with the build
-    # volumes:
-    #   - ./src:/app/src
-    #   - ./public:/app/public
+      - "5000:80" # A porta 5000 do host acessa a 80 do container (NGINX)
     environment:
-      # NODE_ENV should be production for the built app to behave correctly
       - NODE_ENV=production
     restart: unless-stopped
+    # Descomente se quiser logs mais limpos e evitar erros de cache antigo
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"

@@ -6,10 +6,12 @@ const srcPath = path.resolve(__dirname, './src')
 const assetsPath = path.resolve(__dirname, '../attached_assets')
 
 export default defineConfig(({ mode }) => {
+  // Carrega apenas variáveis com prefixo VITE_ do .env
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    base: '/', // importante para funcionar no nginx
+    // '/' garante que funcione corretamente no Nginx (evita erro 404 em SPA)
+    base: '/',
 
     plugins: [react()],
 
@@ -23,13 +25,13 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'esnext',
       minify: 'esbuild',
-      sourcemap: true,
+      sourcemap: true, // útil para debug em produção
       cssCodeSplit: true,
       chunkSizeWarningLimit: 1000,
 
       rollupOptions: {
         output: {
-          manualChunks(id) {
+          manualChunks(id: string) {
             if (id.includes('node_modules')) {
               if (id.includes('react')) return 'vendor-react'
               return 'vendor'
@@ -40,7 +42,9 @@ export default defineConfig(({ mode }) => {
     },
 
     define: {
-      'process.env': env
+      // Expõe apenas variáveis seguras do .env para o frontend
+      'process.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL),
+      'process.env.VITE_STRIPE_PUBLIC_KEY': JSON.stringify(env.VITE_STRIPE_PUBLIC_KEY)
     }
   }
 })
