@@ -1,78 +1,89 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
+const srcPath = path.resolve(__dirname, './src')
+const assetsPath = path.resolve(__dirname, '../attached_assets')
 
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@assets': path.resolve(__dirname, '../attached_assets')
-    }
-  },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
 
-  server: {
-    host: '0.0.0.0',
-    port: 5000,
-    strictPort: true,
-    cors: true,
+  const isProduction = mode === 'production'
 
-    hmr: {
+  return {
+    base: isProduction ? '/app/' : '/',
+
+    plugins: [react()],
+
+    resolve: {
+      alias: {
+        '@': srcPath,
+        '@assets': assetsPath
+      }
+    },
+
+    server: {
       host: '0.0.0.0',
-      clientPort: 443,
-      protocol: 'wss'
-    },
+      port: 5000,
+      strictPort: true,
+      cors: true,
 
-    watch: {
-      usePolling: true // melhora compatibilidade com sistemas de arquivos como Docker, WSL
-    },
+      hmr: {
+        host: '0.0.0.0',
+        clientPort: 443,
+        protocol: 'wss'
+      },
 
-    fs: {
-      strict: false,
-      allow: [
-        path.resolve(__dirname, './'),              // projeto atual
-        path.resolve(__dirname, '../attached_assets') // assets externos
+      watch: {
+        usePolling: true
+      },
+
+      fs: {
+        strict: false,
+        allow: [path.resolve(__dirname, './'), assetsPath]
+      },
+
+      proxy: {
+        '/api': {
+          target: env.VITE_API_URL || 'http://localhost:3000/api',
+          changeOrigin: true,
+          secure: false,
+          rewrite: p => p
+        }
+      },
+
+      allowedHosts: [
+        'ea5246d2-fd09-4c9d-af34-df81c45d0405-00-fd4f6gp7phcr.riker.replit.dev'
       ]
     },
 
-    proxy: {
-      '/api': {
-        target: 'http://api.solarshare.com.br/api/v1',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path 
-      }
-    },
+    build: {
+      target: 'esnext',
+      minify: isProduction ? 'esbuild' : false,
+      sourcemap: isProduction, // só gera sourcemaps em produção
+      cssCodeSplit: true,
+      chunkSizeWarningLimit: 1000,
 
-    allowedHosts: [
-      'ea5246d2-fd09-4c9d-af34-df81c45d0405-00-fd4f6gp7phcr.riker.replit.dev'
-    ]
-  },
-
-  build: {
-    target: 'esnext',
-    minify: 'esbuild',
-    sourcemap: false,
-    cssCodeSplit: true,
-    chunkSizeWarningLimit: 1000,
-
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react')) return 'vendor-react'
-            return 'vendor'
+      rollupOptions: {
+        output: {
+          manualChunks(id: string): string | void {
+            if (id.includes('node_modules')) {
+              if (id.includes('react')) return 'vendor-react'
+              return 'vendor'
+            }
           }
         }
       }
-    }
-  },
+    },
 
-  optimizeDeps: {
-    esbuildOptions: {
-      target: 'esnext'
+    optimizeDeps: {
+      esbuildOptions: {
+        target: 'esnext'
+      }
+    },
+
+    define: {
+      'process.env': env
     }
   }
 })
