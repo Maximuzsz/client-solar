@@ -25,8 +25,9 @@ FROM nginx:alpine
 # 6. Remover arquivos desnecessários do nginx
 RUN rm -rf /usr/share/nginx/html/*
 
-# 7. Copiar os arquivos construídos
-COPY --from=builder /app/dist /usr/share/nginx/html
+# 7. Copiar os arquivos construídos para uma subpasta 'app'
+#    Isso criará /usr/share/nginx/html/app/index.html and /usr/share/nginx/html/app/assets/...
+COPY --from=builder /app/dist /usr/share/nginx/html/app/
 
 # 8. Copiar configuração otimizada do nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
@@ -42,7 +43,7 @@ EXPOSE 80 443
 
 # 11. Health check
 HEALTHCHECK --interval=30s --timeout=3s \
-  CMD curl -f http://localhost/ || exit 1
+    CMD curl -f http://localhost/app/ || exit 1 # Adjusted health check to /app/
 
 # 12. Comando otimizado para iniciar o nginx
 CMD ["nginx", "-g", "daemon off;"]

@@ -4,10 +4,12 @@ services:
   frontend:
     build: .
     ports:
-      - "5000:80"
-    volumes:
-      - ./src:/app/src
-      - ./public:/app/public
+      - "5000:80" # Map host port 5000 to container port 80
+    # IMPORTANT: Remove the volumes for src and public, they interfere with the build
+    # volumes:
+    #   - ./src:/app/src
+    #   - ./public:/app/public
     environment:
-      - NODE_ENV=development
+      # NODE_ENV should be production for the built app to behave correctly
+      - NODE_ENV=production
     restart: unless-stopped
