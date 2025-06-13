@@ -2,6 +2,10 @@ FROM node:18 AS builder
 
 WORKDIR /app
 COPY . .
+
+# Cria automaticamente o .env a partir do template
+RUN cp .env.template .env
+
 RUN npm install
 # aumenta memória disponível para o build
 RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build

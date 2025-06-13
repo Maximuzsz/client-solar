@@ -82,8 +82,10 @@ export default defineConfig(({ mode }) => {
       }
     },
 
-    define: {
-      'process.env': env
-    }
+    define: Object.fromEntries(
+      Object.entries(env)
+        .filter(([key]) => key.startsWith('VITE_') || key === 'NODE_ENV')
+        .map(([key, val]) => [`process.env.${key}`, JSON.stringify(val)])
+    )
   }
 })
