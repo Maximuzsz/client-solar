@@ -11,9 +11,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     // '/' garante que funcione corretamente no Nginx (evita erro 404 em SPA)
+    plugins: [react()],
     base: '/',
 
-    plugins: [react()],
+    
 
     resolve: {
       alias: {

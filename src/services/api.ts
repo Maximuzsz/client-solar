@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://api.solarshare.com.br/api/v1',
+  baseURL: process.env.API_URL || 'http://localhost:3000/api/v1',
 });
 
 // Interceptador para incluir o token de autenticação em todas as requisições

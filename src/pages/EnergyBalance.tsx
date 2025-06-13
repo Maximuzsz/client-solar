@@ -1,10 +1,3 @@
-import {
-  EnergyGaugeChart,
-  EnvironmentalImpact,
-  FinancialSummary,
-  MonthlyComparisonChart,
-  SolarConditions
-} from '@/components/energy-balance';
 import { Layout } from '@/components/layout/Layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,31 +8,27 @@ import { apiRequest } from '@/lib/api';
 import { Network } from '@/types';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import {
-  Activity,
-  BarChart3,
-  ChevronRight,
-  Info,
-  Search,
-  Zap
-} from 'lucide-react';
-import { useState } from 'react';
+import { Activity, BarChart3, ChevronRight, Info, Search, Zap } from 'lucide-react';
+import { Suspense, lazy, useState } from 'react';
 import { useLocation } from 'wouter';
+
+// Lazy load dos componentes pesados
+const EnergyGaugeChart = lazy(() => import('@/components/energy-balance/EnergyGaugeChart'));
+const FinancialSummary = lazy(() => import('@/components/energy-balance/FinancialSummary'));
+const MonthlyComparisonChart = lazy(() => import('@/components/energy-balance/MonthlyComparisonChart'));
+const EnvironmentalImpact = lazy(() => import('@/components/energy-balance/EnvironmentalImpact'));
+const SolarConditions = lazy(() => import('@/components/energy-balance/SolarConditions'));
 
 export default function EnergyBalance() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  
-  // Estado para controle das abas
   const [activeTab, setActiveTab] = useState<string>('networks');
-  
-  // Consulta para obter as redes
+
   const { data: networks, isLoading: isNetworksLoading } = useQuery({
     queryKey: ['networks'],
     queryFn: async () => {
       try {
         const data = await apiRequest<Network[]>('GET', '/networks');
-        console.log('Redes obtidas:', data);
         return Array.isArray(data) ? data : [];
       } catch (error) {
         console.error('Erro ao buscar redes:', error);
@@ -53,7 +42,6 @@ export default function EnergyBalance() {
     }
   });
 
-  // Consulta para obter dados gerais de balanço energético
   const { data: overviewData, isLoading: isOverviewLoading } = useQuery({
     queryKey: ['/api/v1/dashboard/advanced/energy-balance'],
     queryFn: async () => {
@@ -73,23 +61,13 @@ export default function EnergyBalance() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold">Balanço Energético</h1>
-            <p className="text-muted-foreground">
-              Análise detalhada do consumo e geração de energia
-            </p>
+            <p className="text-muted-foreground">Análise detalhada do consumo e geração de energia</p>
           </div>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => navigate('/networks/new')}
-            >
+            <Button variant="outline" size="sm" onClick={() => navigate('/networks/new')}>
               Nova Rede
             </Button>
-            <Button 
-              variant="default" 
-              size="sm"
-              onClick={() => setActiveTab('overview')}
-            >
+            <Button variant="default" size="sm" onClick={() => setActiveTab('overview')}>
               <Activity className="mr-2 h-4 w-4" />
               Ver Panorama Geral
             </Button>
@@ -117,8 +95,8 @@ export default function EnergyBalance() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {networks && networks.length > 0 ? (
                   networks.map(network => (
-                    <Card 
-                      key={network.id} 
+                    <Card
+                      key={network.id}
                       className="cursor-pointer hover:shadow-md transition-shadow"
                       onClick={() => navigate(`/networks/${network.id}/balance`)}
                     >
@@ -126,7 +104,7 @@ export default function EnergyBalance() {
                         <div className="flex justify-between items-start">
                           <CardTitle className="text-lg">{network.name}</CardTitle>
                           <Badge variant="outline" className="px-2 py-1 text-xs">
-                            {/*network.units?.length || */0} unidades
+                            0 unidades
                           </Badge>
                         </div>
                         <CardDescription className="line-clamp-2">
@@ -154,11 +132,7 @@ export default function EnergyBalance() {
                       <p className="text-muted-foreground mb-4">
                         Você precisa criar uma rede para poder visualizar o balanço energético.
                       </p>
-                      <Button 
-                        onClick={() => navigate('/networks')}
-                      >
-                        Criar Nova Rede
-                      </Button>
+                      <Button onClick={() => navigate('/networks')}>Criar Nova Rede</Button>
                     </div>
                   </div>
                 )}
@@ -175,7 +149,6 @@ export default function EnergyBalance() {
               <>
                 {overviewData ? (
                   <div className="space-y-6">
-                    {/* Cards principais */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <Card>
                         <CardHeader className="pb-2">
@@ -184,30 +157,20 @@ export default function EnergyBalance() {
                         <CardContent className="pt-0">
                           <div className="flex items-center justify-between">
                             <div>
-                              <div className={`text-3xl font-bold ${
-                                overviewData.energyBalance >= 0 ? 'text-green-600' : 'text-red-600'
-                              }`}>
+                              <div className={`text-3xl font-bold ${overviewData.energyBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {Math.abs(overviewData.energyBalance).toLocaleString()} kWh
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
                                 {overviewData.energyBalance >= 0 ? 'Excedente' : 'Déficit'} de energia
                               </div>
                             </div>
-                            <div>
-                              {overviewData.energyBalance >= 0 ? (
-                                <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
-                                  <Zap className="h-6 w-6 text-green-600" />
-                                </div>
-                              ) : (
-                                <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                                  <Zap className="h-6 w-6 text-red-600" />
-                                </div>
-                              )}
+                            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${overviewData.energyBalance >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                              <Zap className={`h-6 w-6 ${overviewData.energyBalance >= 0 ? 'text-green-600' : 'text-red-600'}`} />
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-                      
+
                       <Card>
                         <CardHeader className="pb-2">
                           <CardTitle className="text-sm font-medium">Consumo Total</CardTitle>
@@ -216,12 +179,10 @@ export default function EnergyBalance() {
                           <div className="text-3xl font-bold text-orange-600">
                             {overviewData.totalConsumption.toLocaleString()} kWh
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Consumo total de todas as unidades
-                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">Consumo total de todas as unidades</div>
                         </CardContent>
                       </Card>
-                      
+
                       <Card>
                         <CardHeader className="pb-2">
                           <CardTitle className="text-sm font-medium">Geração Total</CardTitle>
@@ -230,46 +191,51 @@ export default function EnergyBalance() {
                           <div className="text-3xl font-bold text-green-600">
                             {overviewData.totalGeneration.toLocaleString()} kWh
                           </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Geração de todas as unidades solares
-                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">Geração de todas as unidades solares</div>
                         </CardContent>
                       </Card>
                     </div>
 
-                    {/* Gauge e Financial Summary */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <Card>
                         <CardHeader>
                           <CardTitle>Proporção Geração/Consumo</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <EnergyGaugeChart 
-                            consumption={overviewData.totalConsumption} 
-                            generation={overviewData.totalGeneration} 
-                          />
+                          <Suspense fallback={<p className="text-sm text-muted-foreground text-center">Carregando gráfico...</p>}>
+                            <EnergyGaugeChart
+                              consumption={overviewData.totalConsumption}
+                              generation={overviewData.totalGeneration}
+                            />
+                          </Suspense>
                         </CardContent>
                       </Card>
-                      
-                      <FinancialSummary 
-                        energyBalance={overviewData.energyBalance}
-                        estimatedSavings={overviewData.estimatedSavings}
-                        estimatedCost={overviewData.estimatedCost}
-                      />
+
+                      <Suspense fallback={<p className="text-sm text-muted-foreground text-center">Carregando resumo financeiro...</p>}>
+                        <FinancialSummary
+                          energyBalance={overviewData.energyBalance}
+                          estimatedSavings={overviewData.estimatedSavings}
+                          estimatedCost={overviewData.estimatedCost}
+                        />
+                      </Suspense>
                     </div>
 
-                    {/* Environmental Impact e Solar Conditions */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <EnvironmentalImpact 
-                        energyBalance={overviewData.energyBalance}
-                        co2Saved={overviewData.co2Saved}
-                      />
-                      
-                      <SolarConditions solarData={overviewData.solar} />
+                      <Suspense fallback={<p className="text-sm text-muted-foreground text-center">Carregando impacto ambiental...</p>}>
+                        <EnvironmentalImpact
+                          energyBalance={overviewData.energyBalance}
+                          co2Saved={overviewData.co2Saved}
+                        />
+                      </Suspense>
+
+                      <Suspense fallback={<p className="text-sm text-muted-foreground text-center">Carregando condições solares...</p>}>
+                        <SolarConditions solarData={overviewData.solar} />
+                      </Suspense>
                     </div>
 
-                    {/* Monthly Comparison Chart */}
-                    <MonthlyComparisonChart title="Histórico de Consumo e Geração (6 meses)" />
+                    <Suspense fallback={<p className="text-sm text-muted-foreground text-center">Carregando histórico mensal...</p>}>
+                      <MonthlyComparisonChart title="Histórico de Consumo e Geração (6 meses)" />
+                    </Suspense>
                   </div>
                 ) : (
                   <div className="text-center py-8">
