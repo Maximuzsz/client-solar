@@ -1,129 +1,189 @@
-import React, { useEffect, Suspense } from 'react'
+import { useEffect } from 'react'
 import { Route, Switch, useLocation } from 'wouter'
 import { AuthProvider, useAuth } from '@/hooks/useAuth.tsx'
 import { Toaster } from '@/components/ui/toaster'
-
-// Implementação do LoadingSpinner
-const LoadingSpinner = ({ fullScreen = false }: { fullScreen?: boolean }) => (
-  <div className={`flex items-center justify-center ${fullScreen ? 'h-screen' : ''}`}>
-    <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-    <p className="ml-4 text-lg text-primary font-medium">Carregando...</p>
-  </div>
-)
-
-// Definindo o tipo para o componente Login com a prop onSuccess
-type LoginProps = {
-  onSuccess?: () => void;
-};
-
-// Lazy loading com tipagem adequada
-const Login = React.lazy(() => import('@/pages/Login').then(module => ({
-  default: module.default as React.FC<LoginProps>
-})));
-
-const NotFound = React.lazy(() => import('@/pages/NotFound'))
-const Dashboard = React.lazy(() => import('@/pages/Dashboard'))
-const Networks = React.lazy(() => import('@/pages/Networks'))
-const Units = React.lazy(() => import('@/pages/Units'))
-const UnitsList = React.lazy(() => import('@/pages/UnitsList'))
-const Readings = React.lazy(() => import('@/pages/Readings'))
-const Calculator = React.lazy(() => import('@/pages/Calculator'))
-const Billing = React.lazy(() => import('@/pages/Billing'))
-const Plans = React.lazy(() => import('@/pages/Plans'))
-const Checkout = React.lazy(() => import('@/pages/Checkout'))
-const PaymentSuccess = React.lazy(() => import('@/pages/Checkout').then(module => ({ default: module.PaymentSuccess })))
-const Subscribe = React.lazy(() => import('@/pages/Subscribe'))
-const Distribuidoras = React.lazy(() => import('@/pages/Distribuidoras'))
-const Tarifas = React.lazy(() => import('@/pages/Tarifas'))
-const Profile = React.lazy(() => import('@/pages/Profile'))
-const Settings = React.lazy(() => import('@/pages/Settings'))
-const NetworkBalance = React.lazy(() => import('@/pages/NetworkBalance'))
-const EnergyBalance = React.lazy(() => import('@/pages/EnergyBalance'))
-const EnergyProjection = React.lazy(() => import('@/pages/EnergyProjection'))
-const LandingPage = React.lazy(() => import('@/pages/LandingPage'))
+import Login from '@/pages/Login'
+import NotFound from '@/pages/NotFound'
+import Dashboard from '@/pages/Dashboard'
+import Networks from '@/pages/Networks'
+import Units from '@/pages/Units'
+import UnitsList from '@/pages/UnitsList'
+import Readings from '@/pages/Readings'
+import Calculator from '@/pages/Calculator'
+import Billing from '@/pages/Billing'
+import Plans from '@/pages/Plans'
+import Checkout, { PaymentSuccess } from '@/pages/Checkout'
+import Subscribe from '@/pages/Subscribe'
+import Distribuidoras from '@/pages/Distribuidoras'
+import Tarifas from '@/pages/Tarifas'
+import Profile from '@/pages/Profile'
+import Settings from '@/pages/Settings'
+import NetworkBalance from '@/pages/NetworkBalance'
+import EnergyBalance from '@/pages/EnergyBalance'
+import EnergyProjection from '@/pages/EnergyProjection'
+import LandingPage from '@/pages/LandingPage'
 
 // Componente protetor de rota
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
   const [, setLocation] = useLocation()
 
+  // Log de estado de autenticação removido por segurança
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      sessionStorage.setItem('redirectPath', window.location.pathname)
+      // Log de redirecionamento removido
       setLocation('/login')
+    } else if (!loading && isAuthenticated) {
+      // Usuário autenticado, continuando para o conteúdo protegido
     }
   }, [isAuthenticated, loading, setLocation])
 
   if (loading) {
-    return <LoadingSpinner fullScreen />
+    // Estado de carregamento da autenticação
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        <p className="ml-4 text-lg text-primary font-medium">Carregando...</p>
+      </div>
+    )
   }
 
-  return isAuthenticated ? <>{children}</> : null
-}
-
-// Componente auxiliar para rotas protegidas
-function ProtectedRoute({ path, component: Component }: { path: string, component: React.ComponentType }) {
-  return (
-    <Route path={path}>
-      <RequireAuth>
-        <Component />
-      </RequireAuth>
-    </Route>
-  )
+  // Se não está carregando e está autenticado, mostra o conteúdo
+  if (isAuthenticated) {
+    // Mostrando conteúdo protegido
+    return <>{children}</>
+  }
+  
+  // Se não está carregando e não está autenticado, não mostra nada (será redirecionado)
+  // Não mostrando conteúdo (redirecionamento pendente)
+  return null;
 }
 
 function Router() {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated } = useAuth();
   
-  if (loading) {
-    return <LoadingSpinner fullScreen />
-  }
-
   return (
-    <Suspense fallback={<LoadingSpinner fullScreen />}>
-      <Switch>
-        <Route path="/">
-          <LandingPage />
-        </Route>
+    <Switch>
+      {/* Rota da Landing Page */}
+      <Route path="/">
+        <LandingPage />
+      </Route>
 
-        <Route path="/login">
-          {isAuthenticated ? (
-            <Dashboard />
-          ) : (
-            <Login onSuccess={() => {
-              const redirectPath = sessionStorage.getItem('redirectPath') || '/dashboard'
-              sessionStorage.removeItem('redirectPath')
-              window.location.href = redirectPath
-            }} />
-          )}
-        </Route>
+      {/* Rota de Login */}
+      <Route path="/login">
+        {isAuthenticated ? <Dashboard /> : <Login />}
+      </Route>
 
-        <ProtectedRoute path="/dashboard" component={Dashboard} />
-        <ProtectedRoute path="/networks" component={Networks} />
-        <ProtectedRoute path="/units" component={Units} />
-        <ProtectedRoute path="/units-list" component={UnitsList} />
-        <ProtectedRoute path="/networks/:networkId/units" component={Units} />
-        <ProtectedRoute path="/networks/:networkId/balance" component={NetworkBalance} />
-        <ProtectedRoute path="/readings/:unitId" component={Readings} />
-        <ProtectedRoute path="/units/:unitId/readings" component={Readings} />
-        <ProtectedRoute path="/calculator" component={Calculator} />
-        <ProtectedRoute path="/billing" component={Billing} />
-        <ProtectedRoute path="/plans" component={Plans} />
-        <ProtectedRoute path="/checkout/:planId" component={Checkout} />
-        <ProtectedRoute path="/pagamento-sucesso" component={PaymentSuccess} />
-        <ProtectedRoute path="/subscribe" component={Subscribe} />
-        <ProtectedRoute path="/distribuidoras" component={Distribuidoras} />
-        <ProtectedRoute path="/tarifas" component={Tarifas} />
-        <ProtectedRoute path="/profile" component={Profile} />
-        <ProtectedRoute path="/settings" component={Settings} />
-        <ProtectedRoute path="/energy-balance" component={EnergyBalance} />
-        <ProtectedRoute path="/energy-projection" component={EnergyProjection} />
+      {/* Rota do Dashboard (protegida) */}
+      <Route path="/dashboard">
+        <RequireAuth>
+          <Dashboard />
+        </RequireAuth>
+      </Route>
 
-        <Route path="*">
-          <NotFound />
-        </Route>
-      </Switch>
-    </Suspense>
+      {/* Demais rotas protegidas */}
+      <Route path="/networks">
+        <RequireAuth>
+          <Networks />
+        </RequireAuth>
+      </Route>
+      <Route path="/units">
+        <RequireAuth>
+          <Units />
+        </RequireAuth>
+      </Route>
+      <Route path="/units-list">
+        <RequireAuth>
+          <UnitsList />
+        </RequireAuth>
+      </Route>
+      <Route path="/networks/:networkId/units">
+        <RequireAuth>
+          <Units />
+        </RequireAuth>
+      </Route>
+      <Route path="/networks/:networkId/balance">
+        <RequireAuth>
+          <NetworkBalance />
+        </RequireAuth>
+      </Route>
+      <Route path="/readings/:unitId">
+        <RequireAuth>
+          <Readings />
+        </RequireAuth>
+      </Route>
+      <Route path="/units/:unitId/readings">
+        <RequireAuth>
+          <Readings />
+        </RequireAuth>
+      </Route>
+      <Route path="/calculator">
+        <RequireAuth>
+          <Calculator />
+        </RequireAuth>
+      </Route>
+
+      <Route path="/billing">
+        <RequireAuth>
+          <Billing />
+        </RequireAuth>
+      </Route>
+      <Route path="/plans">
+        <RequireAuth>
+          <Plans />
+        </RequireAuth>
+      </Route>
+      <Route path="/checkout/:planId">
+        <RequireAuth>
+          <Checkout />
+        </RequireAuth>
+      </Route>
+      <Route path="/pagamento-sucesso">
+        <RequireAuth>
+          <PaymentSuccess />
+        </RequireAuth>
+      </Route>
+      <Route path="/subscribe">
+        <RequireAuth>
+          <Subscribe />
+        </RequireAuth>
+      </Route>
+
+      <Route path="/distribuidoras">
+        <RequireAuth>
+          <Distribuidoras />
+        </RequireAuth>
+      </Route>
+      <Route path="/tarifas">
+        <RequireAuth>
+          <Tarifas />
+        </RequireAuth>
+      </Route>
+      <Route path="/profile">
+        <RequireAuth>
+          <Profile />
+        </RequireAuth>
+      </Route>
+      <Route path="/settings">
+        <RequireAuth>
+          <Settings />
+        </RequireAuth>
+      </Route>
+      <Route path="/energy-balance">
+        <RequireAuth>
+          <EnergyBalance />
+        </RequireAuth>
+      </Route>
+      <Route path="/energy-projection">
+        <RequireAuth>
+          <EnergyProjection />
+        </RequireAuth>
+      </Route>
+      <Route path="*">
+        <NotFound />
+      </Route>
+    </Switch>
   )
 }
 
