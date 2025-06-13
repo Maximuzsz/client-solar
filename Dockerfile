@@ -1,12 +1,11 @@
-# Etapa 1: build da aplicação Vite
 FROM node:18 AS builder
 
 WORKDIR /app
 COPY . .
 RUN npm install
-RUN npm run build
+# aumenta memória disponível para o build
+RUN NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
-# Etapa 2: nginx para servir a aplicação
 FROM nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
