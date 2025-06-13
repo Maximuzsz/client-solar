@@ -1,4 +1,4 @@
-name: Deploy client-solar to EC2
+name: Deploy Docker to EC2
 
 on:
   push:
@@ -7,10 +7,11 @@ on:
 
 jobs:
   deploy:
+    name: Deploy to EC2
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Setup SSH
@@ -18,13 +19,24 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Deploy to EC2
+      - name: Copy project to EC2
+        run: |
+          rsync -avz --delete \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./ ubuntu@3.142.124.62:/home/ubuntu/client-solar
+
+      - name: Build and deploy on EC2
         run: |
           ssh -o StrictHostKeyChecking=no ubuntu@3.142.124.62 << 'EOF'
             cd /home/ubuntu/client-solar
-            git pull origin main
-            docker stop client-solar || true
-            docker rm client-solar || true
+
+            echo "Parando containers existentes..."
+            docker stop $(docker ps -q) || true
+            docker rm $(docker ps -aq) || true
+
+            echo "Iniciando novo build..."
             docker build -t client-solar .
-            docker run -d -p 80:80 --name client-solar client-solar
+
+            echo "Rodando container na porta 80..."
+            docker run -d --name client-solar -p 80:80 client-solar
           EOF
