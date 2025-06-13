@@ -1,4 +1,4 @@
-name: Deploy Docker to EC2
+name: Deploy client-solar to EC2
 
 on:
   push:
@@ -10,69 +10,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Add EC2 to known hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan 3.142.124.62 >> ~/.ssh/known_hosts
-
-      - name: Setup SSH agent
+      - name: Setup SSH
         uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Deploy application to EC2
+      - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@3.142.124.62 /bin/bash << 'EOSSH'
-          set -e
-          echo "🚀 Starting optimized deployment process..."
-          
-          # 1. Navigate to project directory
-          echo "📂 Setting up project directory..."
-          mkdir -p /home/ubuntu/client-solar
-          cd /home/ubuntu/client-solar
-
-          # 2. Update repository
-          echo "🔄 Updating repository..."
-          if [ ! -d .git ]; then
-            git clone https://github.com/Maximuzsz/client-solar.git .
-          else
-            git fetch origin main
-            git reset --hard origin/main
-            git clean -fd
-          fi
-
-          # 3. Increase Node.js memory limit
-          export NODE_OPTIONS="--max-old-space-size=4096"
-
-          # 4. Install dependencies with audit fix
-          echo "📦 Installing and updating dependencies..."
-          npm ci --legacy-peer-deps
-          npm audit fix --force || true
-
-          # 5. Build application with increased memory
-          echo "🏗️ Building application with extra memory..."
-          npm run build
-
-          # 6. Clean up dev dependencies
-          echo "🧹 Cleaning up dev dependencies..."
-          npm prune --production
-
-          # 7. Docker operations
-          echo "🐳 Managing Docker containers..."
-          docker stop solarshare-frontend || true
-          docker rm solarshare-frontend || true
-          docker build -t solarshare-frontend .
-          
-          echo "🚀 Starting container..."
-          docker run -d \
-            --name solarshare-frontend \
-            -p 80:80 \
-            -p 443:443 \
-            --restart unless-stopped \
-            solarshare-frontend
-
-          echo "✅ Deployment completed successfully!"
-          EOSSH
+          ssh -o StrictHostKeyChecking=no ubuntu@3.142.124.62 << 'EOF'
+            cd /home/ubuntu/client-solar
+            git pull origin main
+            docker stop client-solar || true
+            docker rm client-solar || true
+            docker build -t client-solar .
+            docker run -d -p 80:80 --name client-solar client-solar
+          EOF
